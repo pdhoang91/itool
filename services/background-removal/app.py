@@ -1,6 +1,7 @@
 import sys
 from flask import Flask, request, jsonify, send_file
 from rembg import remove
+from datetime import datetime
 import os
 import logging
 from logging.handlers import RotatingFileHandler
@@ -21,20 +22,33 @@ app.logger.setLevel(logging.DEBUG)
 def remove_bg():
     app.logger.info('Received request to /remove-bg')
 
+    # Định nghĩa trước các biến
+    image_path = None
+    output_image_path = None
+
     if 'image' not in request.files:
         app.logger.warning('No image file provided in the request')
         return jsonify({"error": "No image file provided"}), 400
 
     image = request.files['image']
-    image_path = f"/tmp/{image.filename}"
-    output_image_path = f"/tmp/output_{image.filename}"
+    original_filename = image.filename
+    app.logger.info(f"Image received: {original_filename}")
 
-    app.logger.info(f"Image received: {image.filename}, saving to {image_path}")
+    # Đường dẫn thư mục lưu ảnh đã xử lý
+    today = datetime.now().strftime('%Y-%m-%d')
+    output_dir = f"/app/processed_images/{today}"
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Đường dẫn file gốc và file xử lý
+    image_path = os.path.join(output_dir, original_filename)
+    output_image_path = os.path.join(output_dir, f"output_{original_filename}")
 
     try:
-        # Lưu ảnh gốc tạm thời
-        image.save(image_path)
-        app.logger.info(f"Image saved at {image_path}")
+        # Lưu ảnh gốc
+        app.logger.info(f"Saving image to {image_path}")
+        with open(image_path, 'wb') as input_file:
+            input_file.write(image.read())
+        app.logger.info(f"Image saved successfully at {image_path}")
 
         # Xóa nền
         app.logger.info("Removing background...")
@@ -54,9 +68,11 @@ def remove_bg():
         app.logger.error("Error during background removal", exc_info=True)
         return jsonify({"error": str(e)}), 500
     finally:
-        # Xóa file gốc (nếu không cần nữa)
-        if os.path.exists(image_path):
+        # Dọn dẹp file gốc nếu cần
+        if image_path and os.path.exists(image_path):
             os.remove(image_path)
+            app.logger.info(f"Temporary file {image_path} removed")
+
 
 if __name__ == '__main__':
     app.logger.info('Starting Flask server')

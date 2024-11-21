@@ -1,4 +1,4 @@
-version: '3.8'
+#version: '3.8'
 services:
   db:
     image: postgres:13
@@ -55,6 +55,8 @@ services:
       - "5003:5003"
     depends_on:
       - db
+    volumes:
+      - processed_images:/app/processed_images 
 
 #  speech-recognition:
 #    build: ./services/speech-recognition
@@ -143,3 +145,4 @@ services:
 
 volumes:
   db_data:
+  processed_images:

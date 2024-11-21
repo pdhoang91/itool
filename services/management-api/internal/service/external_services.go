@@ -76,26 +76,6 @@ func (s *taskService) HandleVoiceToText(audioURL string) (map[string]string, err
 	return vtsResp, nil
 }
 
-// // HandleBackgroundRemoval xử lý dịch vụ Background Removal
-//
-//	func (s *taskService) HandleBackgroundRemoval(imagePath string) (map[string]string, error) {
-//		resp, err := s.client.R().
-//			SetFile("image", imagePath).
-//			Post("http://background_removal_service:5003/remove-bg")
-//		if err != nil || resp.StatusCode() != 200 {
-//			return nil, fmt.Errorf("failed to call Background Removal service")
-//		}
-//
-//		var brResp map[string]string
-//		if err := json.Unmarshal(resp.Body(), &brResp); err != nil {
-//			return nil, fmt.Errorf("failed to parse Background Removal response")
-//		}
-//
-//		return brResp, nil
-//	}
-//
-// HandleBackgroundRemoval xử lý dịch vụ Background Removal
-// HandleBackgroundRemoval xử lý dịch vụ Background Removal
 func (s *taskService) HandleBackgroundRemoval(imagePath string) (string, error) {
 	log.Printf("HandleBackgroundRemoval: Received request with image path '%s'", imagePath)
 
@@ -112,7 +92,6 @@ func (s *taskService) HandleBackgroundRemoval(imagePath string) (string, error) 
 		return "", fmt.Errorf("failed to call Background Removal service with StatusCode: %d", resp.StatusCode())
 	}
 
-	// Parse JSON response
 	var brResp struct {
 		ProcessedImagePath string `json:"processed_image_path"`
 	}
