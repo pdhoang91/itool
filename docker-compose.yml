@@ -1,0 +1,145 @@
+version: '3.8'
+services:
+  db:
+    image: postgres:13
+    container_name: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: ai_tools
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5433:5432"
+
+  text-to-voice:
+    build: ./services/text-to-voice
+    container_name: text_to_voice_service
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=admin
+      - DB_PASSWORD=password
+      - DB_NAME=ai_tools
+    ports:
+      - "5001:5001"
+    depends_on:
+      - db
+
+#  voice-to-text:
+#    build: ./services/voice-to-text
+#    container_name: voice_to_text_service
+#    environment:
+#      - DB_HOST=db
+#      - DB_PORT=5432
+#      - DB_USER=admin
+#      - DB_PASSWORD=password
+#      - DB_NAME=ai_tools
+#    ports:
+#      - "5002:5002"
+#    depends_on:
+#      - db
+
+  background-removal:
+    build: ./services/background-removal
+    container_name: background_removal_service
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=admin
+      - DB_PASSWORD=password
+      - DB_NAME=ai_tools
+    ports:
+      - "5003:5003"
+    depends_on:
+      - db
+
+#  speech-recognition:
+#    build: ./services/speech-recognition
+#    container_name: speech_recognition_service
+#    environment:
+#      - DB_HOST=db
+#      - DB_PORT=5432
+#      - DB_USER=admin
+#      - DB_PASSWORD=password
+#      - DB_NAME=ai_tools
+#    ports:
+#      - "5004:5004"
+#    depends_on:
+#      - db
+
+  face-recognition:
+    build: ./services/face-recognition
+    container_name: face_recognition
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=admin
+      - DB_PASSWORD=password
+      - DB_NAME=ai_tools
+    ports:
+      - "5005:5005"
+    depends_on:
+      - db
+
+  ocr:
+    build: ./services/ocr
+    container_name: ocr_service
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=admin
+      - DB_PASSWORD=password
+      - DB_NAME=ai_tools
+    ports:
+      - "5006:5006"
+    depends_on:
+      - db
+
+  translation:
+    build: ./services/translation
+    container_name: translation_service
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=admin
+      - DB_PASSWORD=password
+      - DB_NAME=ai_tools
+    ports:
+      - "5007:5007"
+    depends_on:
+      - db
+
+  management-api:
+    build: ./services/management-api
+    container_name: management_api
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=admin
+      - DB_PASSWORD=password
+      - DB_NAME=ai_tools
+    ports:
+      - "81:81"
+    depends_on:
+      - db
+      - text-to-voice
+      #- voice-to-text
+      - background-removal
+      #- speech-recognition
+      - face-recognition
+      - ocr
+      - translation
+
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - management-api
+
+volumes:
+  db_data:
