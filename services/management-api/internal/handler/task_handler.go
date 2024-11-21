@@ -98,31 +98,6 @@ func (h *TaskHandler) HandleVoiceToText(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
-//// HandleBackgroundRemoval xử lý endpoint /remove-bg
-//func (h *TaskHandler) HandleBackgroundRemoval(c *gin.Context) {
-//	file, header, err := c.Request.FormFile("image")
-//	if err != nil {
-//		c.JSON(http.StatusBadRequest, gin.H{"error": "No image file provided"})
-//		return
-//	}
-//
-//	// Lưu file tạm thời
-//	uploadPath := "./uploads/images/"
-//	filePath, err := utils.SaveUploadedFile(file, header, uploadPath)
-//	if err != nil {
-//		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to save the file"})
-//		return
-//	}
-//
-//	resp, err := h.service.HandleBackgroundRemoval(filePath)
-//	if err != nil {
-//		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-//		return
-//	}
-//
-//	c.JSON(http.StatusOK, resp)
-//}
-
 // HandleBackgroundRemoval xử lý endpoint /remove-bg
 func (h *TaskHandler) HandleBackgroundRemoval(c *gin.Context) {
 	log.Println("HandleBackgroundRemoval: Received request to remove background")

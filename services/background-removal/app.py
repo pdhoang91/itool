@@ -36,7 +36,7 @@ def remove_bg():
 
     # Đường dẫn thư mục lưu ảnh đã xử lý
     today = datetime.now().strftime('%Y-%m-%d')
-    output_dir = f"/app/processed_images/{today}"
+    output_dir = f"/shared/images/{today}"
     os.makedirs(output_dir, exist_ok=True)
 
     # Đường dẫn file gốc và file xử lý
@@ -62,8 +62,9 @@ def remove_bg():
             output_file.write(output_data)
         app.logger.info(f"Processed image saved at {output_image_path}")
 
-        # Trả về đường dẫn file
-        return jsonify({"processed_image_path": output_image_path}), 200
+        # Trả về đường dẫn file (volume chung)
+        relative_path = os.path.relpath(output_image_path, "/shared/images")
+        return jsonify({"processed_image_path": relative_path}), 200
     except Exception as e:
         app.logger.error("Error during background removal", exc_info=True)
         return jsonify({"error": str(e)}), 500
