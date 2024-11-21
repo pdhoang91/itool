@@ -8,7 +8,8 @@ RUN go mod download
 
 COPY . .
 
-RUN go build -o management-api .
+#
+RUN go build -o management-api ./cmd/server
 
 EXPOSE 81
 

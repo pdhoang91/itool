@@ -24,6 +24,7 @@ Background Removal:
 
 
 curl -X POST http://localhost:5003/remove-bg -F "image=@/path/to/image/file.png"
+curl -X POST -F "image=test.jpg" http://127.0.0.1:5003/remove-bg --output output.png
 Speech Recognition:
 
 
