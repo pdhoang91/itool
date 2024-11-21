@@ -162,17 +162,22 @@ func handleTextToVoice(c *gin.Context) {
 		return
 	}
 
-	text, exists := req["text"]
-	if !exists {
+	text, textExists := req["text"]
+	if !textExists {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing 'text' field"})
 		return
 	}
 
-	// Gọi service Text-to-Voice
+	// Default language is "en" if not provided
+	language := req["language"]
+	if language == "" {
+		language = "en"
+	}
+
+	// Call Text-to-Voice service with text and language
 	resp, err := client.R().
 		SetHeader("Content-Type", "application/json").
-		SetBody(map[string]string{"text": text}).
-		//Post("http://localhost:5001/convert")
+		SetBody(map[string]string{"text": text, "language": language}).
 		Post("http://text_to_voice_service:5001/convert")
 	if err != nil || resp.StatusCode() != http.StatusOK {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to call Text-to-Voice service"})
@@ -180,7 +185,10 @@ func handleTextToVoice(c *gin.Context) {
 	}
 
 	var ttsResp map[string]string
-	json.Unmarshal(resp.Body(), &ttsResp)
+	if err := json.Unmarshal(resp.Body(), &ttsResp); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse Text-to-Voice response"})
+		return
+	}
 
 	c.JSON(http.StatusOK, ttsResp)
 }

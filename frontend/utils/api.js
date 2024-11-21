@@ -4,8 +4,8 @@ import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:81';
 
-export const convertTextToVoice = (text) => {
-    return axios.post(`${API_BASE_URL}/tts`, { text });
+export const convertTextToVoice = ({text, language}) => {
+    return axios.post(`${API_BASE_URL}/tts`, { text, language });
 };
 
 export const convertVoiceToText = (audioUrl) => {

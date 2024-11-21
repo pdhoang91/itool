@@ -17,10 +17,11 @@ export default function Upload() {
     const [imageFile, setImageFile] = useState(null);
     const [destLang, setDestLang] = useState('');
     const [result, setResult] = useState(null);
+    const [language, setLanguage] = useState("en");
 
     const handleTTS = async () => {
         try {
-            const response = await convertTextToVoice(text);
+            const response = await convertTextToVoice({ text, language });
             setResult(response.data);
         } catch (error) {
             console.error('Error in Text-to-Voice:', error);
@@ -134,73 +135,86 @@ export default function Upload() {
         <div>
             <h1>Upload & Process</h1>
             <div>
+                <label htmlFor="language">Language:</label>
+                <select
+                    id="language"
+                    value={language}
+                    onChange={(e) => setLanguage(e.target.value)}
+                >
+                    <option value="en">English</option>
+                    <option value="vi">Vietnamese</option>
+                    <option value="fr">French</option>
+                    {/* Thêm các ngôn ngữ khác tại đây */}
+                </select>
+            </div>
+            <div>
                 <h2>Text-to-Voice</h2>
-                <input 
-                    type="text" 
-                    value={text} 
-                    onChange={(e) => setText(e.target.value)} 
-                    placeholder="Enter text" 
+                <input
+                    type="text"
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                    placeholder="Enter text"
                 />
                 <button onClick={handleTTS}>Convert to Voice</button>
             </div>
             <div>
                 <h2>Voice-to-Text</h2>
-                <input 
-                    type="file" 
-                    accept="audio/*" 
-                    onChange={(e) => setAudioFile(e.target.files[0])} 
+                <input
+                    type="file"
+                    accept="audio/*"
+                    onChange={(e) => setAudioFile(e.target.files[0])}
                 />
                 <button onClick={handleVTS}>Convert to Text</button>
             </div>
             <div>
                 <h2>Background Removal</h2>
-                <input 
-                    type="file" 
-                    accept="image/*" 
-                    onChange={(e) => setImageFile(e.target.files[0])} 
+                <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setImageFile(e.target.files[0])}
                 />
                 <button onClick={handleRemoveBg}>Remove Background</button>
             </div>
             <div>
                 <h2>Speech Recognition</h2>
-                <input 
-                    type="file" 
-                    accept="audio/*" 
-                    onChange={(e) => setAudioFile(e.target.files[0])} 
+                <input
+                    type="file"
+                    accept="audio/*"
+                    onChange={(e) => setAudioFile(e.target.files[0])}
                 />
                 <button onClick={handleSpeechRecognition}>Recognize Speech</button>
             </div>
             <div>
                 <h2>Face Recognition</h2>
-                <input 
-                    type="file" 
-                    accept="image/*" 
-                    onChange={(e) => setImageFile(e.target.files[0])} 
+                <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setImageFile(e.target.files[0])}
                 />
                 <button onClick={handleFaceRecognition}>Recognize Face</button>
             </div>
             <div>
                 <h2>OCR</h2>
-                <input 
-                    type="file" 
-                    accept="image/*" 
-                    onChange={(e) => setImageFile(e.target.files[0])} 
+                <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setImageFile(e.target.files[0])}
                 />
                 <button onClick={handleOCR}>Perform OCR</button>
             </div>
             <div>
                 <h2>Translation</h2>
-                <input 
-                    type="text" 
-                    value={text} 
-                    onChange={(e) => setText(e.target.value)} 
-                    placeholder="Enter text" 
+                <input
+                    type="text"
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                    placeholder="Enter text"
                 />
-                <input 
-                    type="text" 
-                    value={destLang} 
-                    onChange={(e) => setDestLang(e.target.value)} 
-                    placeholder="Destination Language (e.g., 'vi', 'en')" 
+                <input
+                    type="text"
+                    value={destLang}
+                    onChange={(e) => setDestLang(e.target.value)}
+                    placeholder="Destination Language (e.g., 'vi', 'en')"
                 />
                 <button onClick={handleTranslate}>Translate</button>
             </div>

@@ -17,7 +17,8 @@ import (
 )
 
 type ConvertRequest struct {
-	Text string `json:"text"`
+	Text     string `json:"text"`
+	Language string `json:"language"`
 }
 
 type ConvertResponse struct {
@@ -83,7 +84,6 @@ func main() {
 	log.Println("Routes registered. Starting server at :5001")
 	r.Run(":5001")
 }
-
 func handleConvert(c *gin.Context) {
 	log.Println("Received /convert request")
 
@@ -96,12 +96,17 @@ func handleConvert(c *gin.Context) {
 	}
 	log.Printf("Request payload: %v\n", req)
 
+	// Kiểm tra trường Language
+	if req.Language == "" {
+		req.Language = "en" // Giá trị mặc định nếu không có ngôn ngữ được cung cấp
+	}
+
 	// Insert task vào cơ sở dữ liệu
 	var taskID int
 	log.Println("Inserting task into database...")
 	err := dbPool.QueryRow(context.Background(),
 		"INSERT INTO tasks (service_name, status, input_data) VALUES ($1, $2, $3) RETURNING id",
-		"text-to-voice", "processing", map[string]string{"text": req.Text},
+		"text-to-voice", "processing", map[string]string{"text": req.Text, "language": req.Language},
 	).Scan(&taskID)
 	if err != nil {
 		log.Printf("Database error during task insertion: %v\n", err)
@@ -125,7 +130,7 @@ func handleConvert(c *gin.Context) {
 
 	// Chuyển đổi Text-to-Voice
 	audioPath := fmt.Sprintf("output_%d", taskID) // Không thêm ".mp3"
-	tts := htgotts.Speech{Folder: audioDir, Language: "en", Handler: &handlers.MPlayer{}}
+	tts := htgotts.Speech{Folder: audioDir, Language: req.Language, Handler: &handlers.MPlayer{}}
 	log.Printf("Converting text to speech. Output file: %s\n", audioPath)
 	filePath, err := tts.CreateSpeechFile(req.Text, audioPath)
 	if err != nil {
