@@ -1,0 +1,37 @@
+/* frontend/styles/Header.module.css */
+
+.header {
+    background-color: #0070f3;
+    padding: 20px 0;
+    color: white;
+    text-align: center;
+}
+
+.header h1 {
+    margin: 0;
+    font-size: 24px;
+}
+
+.header nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 10px 0 0 0;
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+}
+
+.header nav ul li {
+    display: inline;
+}
+
+.header nav ul li a {
+    color: white;
+    text-decoration: none;
+    font-weight: bold;
+    transition: color 0.3s;
+}
+
+.header nav ul li a:hover {
+    color: #ffdd57;
+}

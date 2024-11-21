@@ -1,0 +1,24 @@
+/* frontend/styles/UploadSection.module.css */
+
+.uploadSection {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+    width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.result {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+}
+
+.result pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    max-width: 100%;
+}
