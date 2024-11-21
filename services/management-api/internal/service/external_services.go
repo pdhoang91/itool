@@ -3,12 +3,39 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 )
 
+// // HandleTextToVoice xử lý dịch vụ Text-to-Voice
+//
+//	func (s *taskService) HandleTextToVoice(text, language string) (map[string]string, error) {
+//		if language == "" {
+//			language = "en"
+//		}
+//
+//		resp, err := s.client.R().
+//			SetHeader("Content-Type", "application/json").
+//			SetBody(map[string]string{"text": text, "language": language}).
+//			Post("http://text_to_voice_service:5001/convert")
+//		if err != nil || resp.StatusCode() != 200 {
+//			return nil, fmt.Errorf("failed to call Text-to-Voice service")
+//		}
+//
+//		var ttsResp map[string]string
+//		if err := json.Unmarshal(resp.Body(), &ttsResp); err != nil {
+//			return nil, fmt.Errorf("failed to parse Text-to-Voice response")
+//		}
+//
+//		return ttsResp, nil
+//	}
+//
 // HandleTextToVoice xử lý dịch vụ Text-to-Voice
 func (s *taskService) HandleTextToVoice(text, language string) (map[string]string, error) {
+	log.Printf("HandleTextToVoice: Received request with text '%s' and language '%s'", text, language)
+
 	if language == "" {
 		language = "en"
+		log.Printf("HandleTextToVoice: Defaulting language to '%s'", language)
 	}
 
 	resp, err := s.client.R().
@@ -16,14 +43,17 @@ func (s *taskService) HandleTextToVoice(text, language string) (map[string]strin
 		SetBody(map[string]string{"text": text, "language": language}).
 		Post("http://text_to_voice_service:5001/convert")
 	if err != nil || resp.StatusCode() != 200 {
+		log.Printf("HandleTextToVoice: Error calling service. StatusCode: %d, Error: %v", resp.StatusCode(), err)
 		return nil, fmt.Errorf("failed to call Text-to-Voice service")
 	}
 
 	var ttsResp map[string]string
 	if err := json.Unmarshal(resp.Body(), &ttsResp); err != nil {
+		log.Printf("HandleTextToVoice: Error parsing response. Error: %v", err)
 		return nil, fmt.Errorf("failed to parse Text-to-Voice response")
 	}
 
+	log.Printf("HandleTextToVoice: Successfully converted text to voice")
 	return ttsResp, nil
 }
 
@@ -45,20 +75,48 @@ func (s *taskService) HandleVoiceToText(audioURL string) (map[string]string, err
 	return vtsResp, nil
 }
 
+// // HandleBackgroundRemoval xử lý dịch vụ Background Removal
+//
+//	func (s *taskService) HandleBackgroundRemoval(imagePath string) (map[string]string, error) {
+//		resp, err := s.client.R().
+//			SetFile("image", imagePath).
+//			Post("http://background_removal_service:5003/remove-bg")
+//		if err != nil || resp.StatusCode() != 200 {
+//			return nil, fmt.Errorf("failed to call Background Removal service")
+//		}
+//
+//		var brResp map[string]string
+//		if err := json.Unmarshal(resp.Body(), &brResp); err != nil {
+//			return nil, fmt.Errorf("failed to parse Background Removal response")
+//		}
+//
+//		return brResp, nil
+//	}
+//
 // HandleBackgroundRemoval xử lý dịch vụ Background Removal
 func (s *taskService) HandleBackgroundRemoval(imagePath string) (map[string]string, error) {
+	log.Printf("HandleBackgroundRemoval: Received request with image path '%s'", imagePath)
+
 	resp, err := s.client.R().
 		SetFile("image", imagePath).
 		Post("http://background_removal_service:5003/remove-bg")
-	if err != nil || resp.StatusCode() != 200 {
+	if err != nil {
+		log.Printf("HandleBackgroundRemoval: Failed to call Background Removal service. Error: %v", err)
 		return nil, fmt.Errorf("failed to call Background Removal service")
+	}
+
+	if resp.StatusCode() != 200 {
+		log.Printf("HandleBackgroundRemoval: Service returned non-200 status. StatusCode: %d, Response: %s", resp.StatusCode(), resp.String())
+		return nil, fmt.Errorf("failed to call Background Removal service with StatusCode: %d", resp.StatusCode())
 	}
 
 	var brResp map[string]string
 	if err := json.Unmarshal(resp.Body(), &brResp); err != nil {
+		log.Printf("HandleBackgroundRemoval: Failed to parse service response. Error: %v, Raw Response: %s", err, resp.String())
 		return nil, fmt.Errorf("failed to parse Background Removal response")
 	}
 
+	log.Printf("HandleBackgroundRemoval: Successfully processed background removal for image '%s'", imagePath)
 	return brResp, nil
 }
 

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"log"
 	"net/http"
 	"strconv"
 
@@ -21,29 +22,38 @@ func NewTaskHandler(service service.TaskService) *TaskHandler {
 // GetTaskStatus lấy trạng thái của một task
 func (h *TaskHandler) GetTaskStatus(c *gin.Context) {
 	idParam := c.Param("id")
+	log.Printf("GetTaskStatus: Received request with ID %s", idParam)
+
 	id, err := strconv.Atoi(idParam)
 	if err != nil {
+		log.Printf("GetTaskStatus: Invalid task ID %s. Error: %v", idParam, err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid task ID"})
 		return
 	}
 
 	task, err := h.service.GetTaskStatus(id)
 	if err != nil {
+		log.Printf("GetTaskStatus: Task with ID %d not found. Error: %v", id, err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
 		return
 	}
 
+	log.Printf("GetTaskStatus: Successfully retrieved task ID %d", id)
 	c.JSON(http.StatusOK, task)
 }
 
 // GetAllTasks lấy danh sách tất cả các task
 func (h *TaskHandler) GetAllTasks(c *gin.Context) {
+	log.Println("GetAllTasks: Received request for all tasks")
+
 	tasks, err := h.service.GetAllTasks()
 	if err != nil {
+		log.Printf("GetAllTasks: Failed to retrieve tasks. Error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database query error"})
 		return
 	}
 
+	log.Printf("GetAllTasks: Successfully retrieved %d tasks", len(tasks))
 	c.JSON(http.StatusOK, tasks)
 }
 
@@ -88,28 +98,62 @@ func (h *TaskHandler) HandleVoiceToText(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+//// HandleBackgroundRemoval xử lý endpoint /remove-bg
+//func (h *TaskHandler) HandleBackgroundRemoval(c *gin.Context) {
+//	file, header, err := c.Request.FormFile("image")
+//	if err != nil {
+//		c.JSON(http.StatusBadRequest, gin.H{"error": "No image file provided"})
+//		return
+//	}
+//
+//	// Lưu file tạm thời
+//	uploadPath := "./uploads/images/"
+//	filePath, err := utils.SaveUploadedFile(file, header, uploadPath)
+//	if err != nil {
+//		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to save the file"})
+//		return
+//	}
+//
+//	resp, err := h.service.HandleBackgroundRemoval(filePath)
+//	if err != nil {
+//		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+//		return
+//	}
+//
+//	c.JSON(http.StatusOK, resp)
+//}
+
 // HandleBackgroundRemoval xử lý endpoint /remove-bg
 func (h *TaskHandler) HandleBackgroundRemoval(c *gin.Context) {
+	log.Println("HandleBackgroundRemoval: Received request to remove background")
+
 	file, header, err := c.Request.FormFile("image")
 	if err != nil {
+		log.Printf("HandleBackgroundRemoval: No image file provided. Error: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "No image file provided"})
 		return
 	}
+	log.Printf("HandleBackgroundRemoval: Received file '%s' with size %d bytes", header.Filename, header.Size)
 
 	// Lưu file tạm thời
 	uploadPath := "./uploads/images/"
 	filePath, err := utils.SaveUploadedFile(file, header, uploadPath)
 	if err != nil {
+		log.Printf("HandleBackgroundRemoval: Failed to save file '%s'. Error: %v", header.Filename, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to save the file"})
 		return
 	}
+	log.Printf("HandleBackgroundRemoval: File saved to temporary path '%s'", filePath)
 
+	// Gọi service xử lý background removal
 	resp, err := h.service.HandleBackgroundRemoval(filePath)
 	if err != nil {
+		log.Printf("HandleBackgroundRemoval: Failed to process background removal for file '%s'. Error: %v", filePath, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
+	log.Printf("HandleBackgroundRemoval: Successfully processed background removal for file '%s'", filePath)
 	c.JSON(http.StatusOK, resp)
 }
 
