@@ -29,47 +29,34 @@ def remove_bg():
     image_path = f"/tmp/{image.filename}"
     output_image_path = f"/tmp/output_{image.filename}"
 
-    app.logger.info(f'Image received: {image.filename}')
-    app.logger.info(f'Saving image to {image_path}')
+    app.logger.info(f"Image received: {image.filename}, saving to {image_path}")
 
     try:
-        # Lưu tạm ảnh gốc
+        # Lưu ảnh gốc tạm thời
         image.save(image_path)
-        app.logger.info(f'Image saved successfully at {image_path}')
+        app.logger.info(f"Image saved at {image_path}")
 
         # Xóa nền
-        app.logger.info('Starting background removal process')
+        app.logger.info("Removing background...")
         with open(image_path, 'rb') as input_file:
             input_data = input_file.read()
-            app.logger.debug('Input image data read successfully')
             output_data = remove(input_data)
-            app.logger.info('Background removal completed successfully')
+        app.logger.info("Background removed successfully")
 
-        # Lưu ảnh đã xóa nền
-        app.logger.info(f'Saving output image to {output_image_path}')
+        # Lưu ảnh đã xử lý
         with open(output_image_path, 'wb') as output_file:
             output_file.write(output_data)
-        app.logger.info(f'Output image saved successfully at {output_image_path}')
+        app.logger.info(f"Processed image saved at {output_image_path}")
 
-        # Trả ảnh đã xóa nền
-        app.logger.info('Sending output image back to client')
-        return send_file(output_image_path, mimetype='image/png')
-
+        # Trả về đường dẫn file
+        return jsonify({"processed_image_path": output_image_path}), 200
     except Exception as e:
-        app.logger.error('Error during background removal', exc_info=True)
+        app.logger.error("Error during background removal", exc_info=True)
         return jsonify({"error": str(e)}), 500
-
     finally:
-        # Dọn dẹp file tạm
-        try:
-            if os.path.exists(image_path):
-                os.remove(image_path)
-                app.logger.info(f'Removed temporary file {image_path}')
-            if os.path.exists(output_image_path):
-                os.remove(output_image_path)
-                app.logger.info(f'Removed temporary file {output_image_path}')
-        except Exception as cleanup_error:
-            app.logger.error('Error during cleanup', exc_info=True)
+        # Xóa file gốc (nếu không cần nữa)
+        if os.path.exists(image_path):
+            os.remove(image_path)
 
 if __name__ == '__main__':
     app.logger.info('Starting Flask server')

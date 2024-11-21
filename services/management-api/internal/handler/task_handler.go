@@ -127,6 +127,7 @@ func (h *TaskHandler) HandleVoiceToText(c *gin.Context) {
 func (h *TaskHandler) HandleBackgroundRemoval(c *gin.Context) {
 	log.Println("HandleBackgroundRemoval: Received request to remove background")
 
+	// Lấy file từ yêu cầu
 	file, header, err := c.Request.FormFile("image")
 	if err != nil {
 		log.Printf("HandleBackgroundRemoval: No image file provided. Error: %v", err)
@@ -146,7 +147,7 @@ func (h *TaskHandler) HandleBackgroundRemoval(c *gin.Context) {
 	log.Printf("HandleBackgroundRemoval: File saved to temporary path '%s'", filePath)
 
 	// Gọi service xử lý background removal
-	resp, err := h.service.HandleBackgroundRemoval(filePath)
+	processedImagePath, err := h.service.HandleBackgroundRemoval(filePath)
 	if err != nil {
 		log.Printf("HandleBackgroundRemoval: Failed to process background removal for file '%s'. Error: %v", filePath, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -154,7 +155,9 @@ func (h *TaskHandler) HandleBackgroundRemoval(c *gin.Context) {
 	}
 
 	log.Printf("HandleBackgroundRemoval: Successfully processed background removal for file '%s'", filePath)
-	c.JSON(http.StatusOK, resp)
+
+	// Trả về đường dẫn file đã xử lý
+	c.JSON(http.StatusOK, gin.H{"processed_image_path": processedImagePath})
 }
 
 // HandleSpeechRecognition xử lý endpoint /speech-recognition

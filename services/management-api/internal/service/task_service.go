@@ -12,7 +12,7 @@ type TaskService interface {
 	GetAllTasks() ([]domain.Task, error)
 	HandleTextToVoice(text, language string) (map[string]string, error)
 	HandleVoiceToText(audioURL string) (map[string]string, error)
-	HandleBackgroundRemoval(imagePath string) (map[string]string, error)
+	HandleBackgroundRemoval(imagePath string) (string, error)
 	HandleSpeechRecognition(audioURL string) (map[string]string, error)
 	HandleFaceRecognition(imagePath string) (map[string]interface{}, error)
 	HandleOCR(imagePath string) (map[string]string, error)

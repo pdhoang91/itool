@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
 )
 
 // // HandleTextToVoice xử lý dịch vụ Text-to-Voice
@@ -94,7 +95,8 @@ func (s *taskService) HandleVoiceToText(audioURL string) (map[string]string, err
 //	}
 //
 // HandleBackgroundRemoval xử lý dịch vụ Background Removal
-func (s *taskService) HandleBackgroundRemoval(imagePath string) (map[string]string, error) {
+// HandleBackgroundRemoval xử lý dịch vụ Background Removal
+func (s *taskService) HandleBackgroundRemoval(imagePath string) (string, error) {
 	log.Printf("HandleBackgroundRemoval: Received request with image path '%s'", imagePath)
 
 	resp, err := s.client.R().
@@ -102,22 +104,25 @@ func (s *taskService) HandleBackgroundRemoval(imagePath string) (map[string]stri
 		Post("http://background_removal_service:5003/remove-bg")
 	if err != nil {
 		log.Printf("HandleBackgroundRemoval: Failed to call Background Removal service. Error: %v", err)
-		return nil, fmt.Errorf("failed to call Background Removal service")
+		return "", fmt.Errorf("failed to call Background Removal service")
 	}
 
-	if resp.StatusCode() != 200 {
+	if resp.StatusCode() != http.StatusOK {
 		log.Printf("HandleBackgroundRemoval: Service returned non-200 status. StatusCode: %d, Response: %s", resp.StatusCode(), resp.String())
-		return nil, fmt.Errorf("failed to call Background Removal service with StatusCode: %d", resp.StatusCode())
+		return "", fmt.Errorf("failed to call Background Removal service with StatusCode: %d", resp.StatusCode())
 	}
 
-	var brResp map[string]string
+	// Parse JSON response
+	var brResp struct {
+		ProcessedImagePath string `json:"processed_image_path"`
+	}
 	if err := json.Unmarshal(resp.Body(), &brResp); err != nil {
 		log.Printf("HandleBackgroundRemoval: Failed to parse service response. Error: %v, Raw Response: %s", err, resp.String())
-		return nil, fmt.Errorf("failed to parse Background Removal response")
+		return "", fmt.Errorf("failed to parse Background Removal response")
 	}
 
 	log.Printf("HandleBackgroundRemoval: Successfully processed background removal for image '%s'", imagePath)
-	return brResp, nil
+	return brResp.ProcessedImagePath, nil
 }
 
 // HandleSpeechRecognition xử lý dịch vụ Speech Recognition
