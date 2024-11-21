@@ -1,3 +1,4 @@
 Flask==2.1.2
+Werkzeug==2.1.0
 rembg==2.0.60
-psycopg2-binary==2.9.3
+onnxruntime==1.15.1  # Cần thiết cho rembg
