@@ -148,10 +148,13 @@ func (s *taskService) HandleOCR(imagePath string) (map[string]string, error) {
 		return nil, fmt.Errorf("failed to call OCR service")
 	}
 
+	fmt.Println("resp", resp)
+
 	var ocrResp map[string]string
 	if err := json.Unmarshal(resp.Body(), &ocrResp); err != nil {
 		return nil, fmt.Errorf("failed to parse OCR response")
 	}
+	fmt.Println("ocrResp", ocrResp)
 
 	return ocrResp, nil
 }

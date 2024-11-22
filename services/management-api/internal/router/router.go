@@ -25,7 +25,7 @@ func SetupRouter(taskService service.TaskService, cfg *config.Config) *gin.Engin
 
 	r.Static("/uploads", "./uploads")
 	r.Static("/images", "/shared/images")
-	r.Static("/shared", "/shared/images")
+	//r.Static("/shared", "/shared/images")
 
 	taskHandler := handler.NewTaskHandler(taskService)
 

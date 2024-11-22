@@ -28,19 +28,19 @@ services:
     depends_on:
       - db
 
-  voice-to-text:
-    build: ./services/voice-to-text
-    container_name: voice_to_text_service
-    environment:
-      - DB_HOST=db
-      - DB_PORT=5432
-      - DB_USER=admin
-      - DB_PASSWORD=password
-      - DB_NAME=ai_tools
-    ports:
-      - "5002:5002"
-    depends_on:
-      - db
+  # voice-to-text:
+  #   build: ./services/voice-to-text
+  #   container_name: voice_to_text_service
+  #   environment:
+  #     - DB_HOST=db
+  #     - DB_PORT=5432
+  #     - DB_USER=admin
+  #     - DB_PASSWORD=password
+  #     - DB_NAME=ai_tools
+  #   ports:
+  #     - "5002:5002"
+  #   depends_on:
+  #     - db
 
   background-removal:
     build: ./services/background-removal
