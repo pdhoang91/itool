@@ -1,29 +1,37 @@
 // ViewModels/PodcastViewModel.swift
 import Foundation
+import SwiftUI
 
+@MainActor
 class PodcastViewModel: ObservableObject {
     @Published var newsItems: [NewsItem] = []
+    @Published var isLoading = false
+    @Published var error: Error?
+    @Published var currentPlayingItem: NewsItem?
+    @Published var isPlaying = false
     
-    init() {
-        // In a real app, you would fetch news items that have audio available
-        fetchNewsItems()
+    private let apiService = APIService.shared
+    
+    func fetchPodcasts() {
+        Task {
+            isLoading = true
+            do {
+                let response = try await apiService.fetchNews(page: 1)
+                newsItems = response.items
+            } catch {
+                self.error = error
+            }
+            isLoading = false
+        }
     }
     
-    private func fetchNewsItems() {
-        // Mock data
-        newsItems = [
-            NewsItem(
-                title: "Podcast 1",
-                summary: "Tóm tắt podcast 1",
-                content: "Nội dung chi tiết podcast 1...",
-                source: "VnExpress",
-                publishedDate: Date(),
-                imageUrl: "https://example.com/image1.jpg",
-                audioUrl: "https://example.com/audio1.mp3"
-            ),
-            // Add more mock items
-        ]
+    func playPodcast(_ item: NewsItem) {
+        currentPlayingItem = item
+        isPlaying = true
+        // Implement actual audio playback here
+    }
+    
+    func pausePodcast() {
+        isPlaying = false
     }
 }
-
-

@@ -1,35 +1,58 @@
 // Views/PodcastView.swift
-// Views/PodcastView.swift
 import SwiftUI
 
 struct PodcastView: View {
     @StateObject private var viewModel = PodcastViewModel()
-    @StateObject private var audioPlayer = AudioPlayerViewModel()
     
     var body: some View {
         NavigationView {
             List {
-                ForEach(viewModel.newsItems) { item in
-                    PodcastItemRow(item: item, audioPlayer: audioPlayer)
+                if viewModel.isLoading {
+                    ProgressView()
+                } else {
+                    ForEach(viewModel.newsItems) { item in
+                        PodcastItemRow(
+                            item: item,
+                            isPlaying: viewModel.currentPlayingItem?.id == item.id && viewModel.isPlaying,
+                            onTap: {
+                                if viewModel.currentPlayingItem?.id == item.id {
+                                    viewModel.isPlaying ? viewModel.pausePodcast() : viewModel.playPodcast(item)
+                                } else {
+                                    viewModel.playPodcast(item)
+                                }
+                            }
+                        )
+                    }
                 }
             }
             .navigationTitle("Podcast")
             .overlay(
-                // Mini Player if something is playing
-                audioPlayer.currentItem.map { item in
-                    VStack {
-                        Spacer()
-                        MiniPlayer(item: item, audioPlayer: audioPlayer)
+                Group {
+                    if let currentItem = viewModel.currentPlayingItem {
+                        VStack {
+                            Spacer()
+                            MiniPlayer(
+                                item: currentItem,
+                                isPlaying: viewModel.isPlaying,
+                                onPlayPause: {
+                                    viewModel.isPlaying ? viewModel.pausePodcast() : viewModel.playPodcast(currentItem)
+                                }
+                            )
+                        }
                     }
                 }
             )
+        }
+        .onAppear {
+            viewModel.fetchPodcasts()
         }
     }
 }
 
 struct PodcastItemRow: View {
     let item: NewsItem
-    @ObservedObject var audioPlayer: AudioPlayerViewModel
+    let isPlaying: Bool
+    let onTap: () -> Void
     
     var body: some View {
         HStack(spacing: 12) {
@@ -58,16 +81,8 @@ struct PodcastItemRow: View {
                 .clipped()
                 .cornerRadius(8)
                 
-                // Play/Pause Button overlay
-                Button(action: {
-                    if audioPlayer.currentItem?.id == item.id {
-                        audioPlayer.isPlaying ? audioPlayer.pause() : audioPlayer.play(item)
-                    } else {
-                        audioPlayer.play(item)
-                    }
-                }) {
-                    Image(systemName: audioPlayer.currentItem?.id == item.id && audioPlayer.isPlaying ? 
-                          "pause.circle.fill" : "play.circle.fill")
+                Button(action: onTap) {
+                    Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
                         .font(.title)
                         .foregroundColor(.white)
                         .shadow(radius: 4)
@@ -81,7 +96,8 @@ struct PodcastItemRow: View {
 
 struct MiniPlayer: View {
     let item: NewsItem
-    @ObservedObject var audioPlayer: AudioPlayerViewModel
+    let isPlaying: Bool
+    let onPlayPause: () -> Void
     
     var body: some View {
         HStack(spacing: 16) {
@@ -100,10 +116,8 @@ struct MiniPlayer: View {
             
             Spacer()
             
-            Button(action: {
-                audioPlayer.isPlaying ? audioPlayer.pause() : audioPlayer.play(item)
-            }) {
-                Image(systemName: audioPlayer.isPlaying ? "pause.circle.fill" : "play.circle.fill")
+            Button(action: onPlayPause) {
+                Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
                     .font(.title)
             }
         }
@@ -113,6 +127,13 @@ struct MiniPlayer: View {
     }
 }
 
-#Preview {
-    PodcastView()
+struct PodcastView_Previews: PreviewProvider {
+    static var previews: some View {
+        PodcastView()
+    }
 }
+
+#Preview {
+    NewsView()
+}
+

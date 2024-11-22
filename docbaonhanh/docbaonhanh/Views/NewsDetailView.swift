@@ -1,14 +1,13 @@
 // Views/NewsDetailView.swift
+// Views/NewsDetailView.swift
 import SwiftUI
 
 struct NewsDetailView: View {
     let item: NewsItem
-    @StateObject private var audioPlayer = AudioPlayerViewModel()
     
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                // Header Image
                 AsyncImage(url: URL(string: item.imageUrl)) { image in
                     image
                         .resizable()
@@ -20,7 +19,6 @@ struct NewsDetailView: View {
                 .clipped()
                 
                 VStack(alignment: .leading, spacing: 12) {
-                    // Title and Meta
                     Text(item.title)
                         .font(.title)
                         .fontWeight(.bold)
@@ -36,23 +34,6 @@ struct NewsDetailView: View {
                     
                     Divider()
                     
-                    // Audio Player Button
-                    Button(action: {
-                        audioPlayer.isPlaying ? audioPlayer.pause() : audioPlayer.play(item)
-                    }) {
-                        HStack {
-                            Image(systemName: audioPlayer.isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                                .font(.title)
-                            Text(audioPlayer.isPlaying ? "Tạm dừng" : "Nghe tin")
-                        }
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.blue)
-                        .cornerRadius(10)
-                    }
-                    
-                    // Content
                     Text(item.content)
                         .font(.body)
                 }
