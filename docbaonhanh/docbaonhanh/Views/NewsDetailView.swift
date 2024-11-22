@@ -62,3 +62,8 @@ struct NewsDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 }
+
+#Preview {
+    ContentView()
+}
+

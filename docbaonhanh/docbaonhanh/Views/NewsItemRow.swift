@@ -47,3 +47,8 @@ struct NewsItemRow: View {
         .padding(.vertical, 4)
     }
 }
+
+#Preview {
+    ContentView()
+}
+
