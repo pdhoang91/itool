@@ -1,26 +1,33 @@
-FROM python:3.9
+FROM python:3.8-slim
 
 WORKDIR /app
 
-# Install necessary system packages
+# Cài đặt các gói hệ thống cần thiết
 RUN apt-get update && apt-get install -y \
     libstdc++6 \
     libgcc-s1 \
     sox \
     && rm -rf /var/lib/apt/lists/*
 
-# Upgrade pip to the latest version
+RUN apt-get update && apt-get install -y wget unzip \
+    && wget https://github.com/mozilla/DeepSpeech/releases/download/v0.9.3/deepspeech-0.9.3-models.pbmm \
+    && wget https://github.com/mozilla/DeepSpeech/releases/download/v0.9.3/deepspeech-0.9.3-models.scorer \
+    && wget https://github.com/mozilla/DeepSpeech/releases/download/v0.9.3/deepspeech-0.9.3-models.tar.gz \
+    && tar -xvzf deepspeech-0.9.3-models.tar.gz
+
+
+# Nâng cấp pip lên phiên bản mới nhất
 RUN pip install --upgrade pip
 
-# Copy and install Python dependencies
+# Copy và cài đặt các thư viện Python
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy your application code
+# Copy mã nguồn vào container
 COPY . .
 
-# Expose the application port
+# Mở cổng ứng dụng
 EXPOSE 5002
 
-# Run the application
+# Chạy ứng dụng
 CMD ["python", "app.py"]
