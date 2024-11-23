@@ -11,7 +11,7 @@ enum APIError: Error {
 
 class APIService {
     static let shared = APIService()
-    private let baseURL = "https://your-api-base-url.com/api"
+    private let baseURL = "http://localhost:82/api"
     private let pageSize = 20
     
     private init() {}
