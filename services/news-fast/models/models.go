@@ -11,9 +11,9 @@ type News struct {
 	Summary      string    `json:"summary"`
 	Content      string    `json:"content"`
 	SourceID     uint      `json:"source_id"`
-	Source       Source    `json:"source"`
+	Source       Source    `json:"-"`
 	CategoryID   uint      `json:"category_id"`
-	Category     Category  `json:"category"`
+	Category     Category  `json:"-"`
 	ImageURL     string    `json:"image_url"`
 	AudioURL     *string   `json:"audio_url"`
 	IsBookmarked bool      `json:"is_bookmarked" gorm:"default:false"`

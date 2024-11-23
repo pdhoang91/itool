@@ -34,6 +34,7 @@ class APIService {
             
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .iso8601
+            decoder.keyDecodingStrategy = .convertFromSnakeCase  // Thêm dòng này
             
             return try decoder.decode(NewsResponse.self, from: data)
         } catch let error as DecodingError {
