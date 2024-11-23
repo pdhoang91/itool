@@ -1,9 +1,12 @@
 // Views/NewsDetailView.swift
 // Views/NewsDetailView.swift
 import SwiftUI
+import AVFoundation
 
 struct NewsDetailView: View {
     let item: NewsItem
+    @State private var showAudioPlayer = false
+    let audioService = AudioPlayerService.shared
     
     var body: some View {
         ScrollView {
@@ -32,6 +35,22 @@ struct NewsDetailView: View {
                     }
                     .font(.subheadline)
                     
+                    if let audioUrl = URL(string: item.audioUrl ?? "") {
+                        Button(action: {
+                            audioService.play(url: audioUrl)
+                            showAudioPlayer = true
+                        }) {
+                            HStack {
+                                Image(systemName: "play.circle.fill")
+                                    .font(.title2)
+                                Text("Nghe tin")
+                                    .font(.headline)
+                            }
+                            .foregroundColor(.blue)
+                            .padding(.vertical, 8)
+                        }
+                    }
+                    
                     Divider()
                     
                     Text(item.content)
@@ -41,6 +60,18 @@ struct NewsDetailView: View {
             }
         }
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showAudioPlayer) {
+            AudioPlayerView(audioService: audioService, newsTitle: item.title)
+                .presentationDetents([.height(200)])
+        }
+        .overlay(
+            VStack {
+                Spacer()
+                if showAudioPlayer {
+                    MiniPlayerView(audioService: audioService, newsTitle: item.title)
+                }
+            }
+        )
     }
 }
 
