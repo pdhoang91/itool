@@ -32,14 +32,51 @@ class APIService {
                 throw APIError.httpError(httpResponse.statusCode)
             }
             
+            // Debug print
+            if let jsonString = String(data: data, encoding: .utf8) {
+                print("Response JSON: \(jsonString)")
+            }
+            
             let decoder = JSONDecoder()
-            decoder.dateDecodingStrategy = .iso8601
-            decoder.keyDecodingStrategy = .convertFromSnakeCase  // Thêm dòng này
+            
+            // Cấu hình custom date formatter
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
+            dateFormatter.locale = Locale(identifier: "en_US_POSIX")
+            dateFormatter.timeZone = TimeZone(secondsFromGMT: 0)
+            
+            decoder.dateDecodingStrategy = .custom { decoder in
+                let container = try decoder.singleValueContainer()
+                let dateString = try container.decode(String.self)
+                
+                // Thử nhiều format date khác nhau
+                let formats = [
+                    "yyyy-MM-dd'T'HH:mm:ss.SSSZ",
+                    "yyyy-MM-dd'T'HH:mm:ssZ",
+                    "yyyy-MM-dd'T'HH:mm:ss.SSSSSSSZ"
+                ]
+                
+                for format in formats {
+                    dateFormatter.dateFormat = format
+                    if let date = dateFormatter.date(from: dateString) {
+                        return date
+                    }
+                }
+                
+                throw DecodingError.dataCorruptedError(
+                    in: container,
+                    debugDescription: "Cannot decode date string: \(dateString)"
+                )
+            }
+            
+            decoder.keyDecodingStrategy = .convertFromSnakeCase
             
             return try decoder.decode(NewsResponse.self, from: data)
         } catch let error as DecodingError {
+            print("Decoding error: \(error)")
             throw APIError.decodingError(error)
         } catch {
+            print("Network error: \(error)")
             throw APIError.networkError(error)
         }
     }

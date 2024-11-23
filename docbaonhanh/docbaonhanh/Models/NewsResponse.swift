@@ -1,12 +1,17 @@
 // Models/NewsResponse.swift
 import Foundation
 
+// Models/NewsResponse.swift
+// Models/NewsResponse.swift
 struct NewsResponse: Codable {
     let items: [NewsItem]
-    let pagination: PaginationInfo
+    let currentPage: Int
+    let totalPages: Int
+    let totalItems: Int
+    let hasNext: Bool
 }
 
-struct PaginationInfo: Codable {
+struct Pagination: Codable {
     let currentPage: Int
     let totalPages: Int
     let totalItems: Int

@@ -34,21 +34,24 @@ class NewsViewModel: ObservableObject {
     private var currentPage = 1
     private var isFetching = false
     
-    func fetchInitialNews() {
-        Task {
-            do {
-                isLoading = true
-                error = nil
-                let response = try await APIService.shared.fetchNews(page: 1)
-                newsItems = response.items
-                hasMorePages = response.pagination.hasNext
-                currentPage = 1
-            } catch {
-                self.error = error
-            }
-            isLoading = false
+func fetchInitialNews() {
+    Task {
+        do {
+            isLoading = true
+            error = nil
+            print("Fetching initial news...")
+            let response = try await APIService.shared.fetchNews(page: 1)
+            print("Received \(response.items.count) items")
+            newsItems = response.items
+            hasMorePages = response.hasNext
+            currentPage = 1
+        } catch {
+            print("Error fetching news: \(error)")
+            self.error = error
         }
+        isLoading = false
     }
+}
     
     func loadMoreIfNeeded(currentItem item: NewsItem?) {
         guard let item = item else { return }
@@ -69,7 +72,7 @@ class NewsViewModel: ObservableObject {
                 let response = try await APIService.shared.fetchNews(page: nextPage)
                 
                 newsItems.append(contentsOf: response.items)
-                hasMorePages = response.pagination.hasNext
+                hasMorePages = response.hasNext
                 currentPage = nextPage
                 isFetching = false
             } catch {
