@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { removeBackground } from '../../services/api';
+import Image from 'next/image';
 
 export default function RemoveBackground() {
     const [imageFile, setImageFile] = useState(null);
@@ -43,7 +44,7 @@ export default function RemoveBackground() {
             {resultUrl && (
                 <div>
                     <h3>Result:</h3>
-                    <img
+                    <Image
                         src={resultUrl}
                         alt="Processed"
                         style={{ maxWidth: '100%', marginBottom: '1em' }}

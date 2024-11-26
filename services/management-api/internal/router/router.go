@@ -3,13 +3,12 @@ package router
 import (
 	"management-api/internal/config"
 	"management-api/internal/handler"
-	"management-api/internal/service"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
-func SetupRouter(taskService service.TaskService, cfg *config.Config) *gin.Engine {
+func SetupRouter(taskHandler handler.TaskHandler, cfg *config.Config) *gin.Engine {
 	r := gin.Default()
 
 	corsConfig := cors.Config{
@@ -26,8 +25,6 @@ func SetupRouter(taskService service.TaskService, cfg *config.Config) *gin.Engin
 	r.Static("/uploads", "./uploads")
 	r.Static("/images", "/shared/images")
 	//r.Static("/shared", "/shared/images")
-
-	taskHandler := handler.NewTaskHandler(taskService)
 
 	// Endpoint nhiệm vụ
 	r.GET("/tasks/:id", taskHandler.GetTaskStatus)

@@ -1,57 +1,55 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
+	"management-api/internal/domain"
 	"net/http"
 )
 
-// // HandleTextToVoice xử lý dịch vụ Text-to-Voice
-//
-//	func (s *taskService) HandleTextToVoice(text, language string) (map[string]string, error) {
-//		if language == "" {
-//			language = "en"
-//		}
-//
-//		resp, err := s.client.R().
-//			SetHeader("Content-Type", "application/json").
-//			SetBody(map[string]string{"text": text, "language": language}).
-//			Post("http://text_to_voice_service:5001/convert")
-//		if err != nil || resp.StatusCode() != 200 {
-//			return nil, fmt.Errorf("failed to call Text-to-Voice service")
-//		}
-//
-//		var ttsResp map[string]string
-//		if err := json.Unmarshal(resp.Body(), &ttsResp); err != nil {
-//			return nil, fmt.Errorf("failed to parse Text-to-Voice response")
-//		}
-//
-//		return ttsResp, nil
-//	}
-//
-// HandleTextToVoice xử lý dịch vụ Text-to-Voice
-func (s *taskService) HandleTextToVoice(text, language string) (map[string]string, error) {
-	log.Printf("HandleTextToVoice: Received request with text '%s' and language '%s'", text, language)
+func (s *taskService) HandleTextToVoice(text, language, voice string, speed, pitch, volume float64) (map[string]string, error) {
+	log.Printf("HandleTextToVoice: Starting conversion with text '%s', language '%s', voice '%s'",
+		text, language, voice)
 
-	if language == "" {
-		language = "en"
-		log.Printf("HandleTextToVoice: Defaulting language to '%s'", language)
-	}
-
+	// Call TTS service
 	resp, err := s.client.R().
 		SetHeader("Content-Type", "application/json").
-		SetBody(map[string]string{"text": text, "language": language}).
+		SetBody(map[string]interface{}{
+			"text":     text,
+			"language": language,
+			"voice":    voice,
+			"speed":    speed,
+			"pitch":    pitch,
+			"volume":   volume,
+		}).
 		Post("http://text_to_voice_service:5001/convert")
+
 	if err != nil || resp.StatusCode() != 200 {
-		log.Printf("HandleTextToVoice: Error calling service. StatusCode: %d, Error: %v", resp.StatusCode(), err)
+		log.Printf("HandleTextToVoice: Service error - %v, Status: %d", err, resp.StatusCode())
 		return nil, fmt.Errorf("failed to call Text-to-Voice service")
 	}
 
 	var ttsResp map[string]string
 	if err := json.Unmarshal(resp.Body(), &ttsResp); err != nil {
-		log.Printf("HandleTextToVoice: Error parsing response. Error: %v", err)
+		log.Printf("HandleTextToVoice: Response parsing error - %v", err)
 		return nil, fmt.Errorf("failed to parse Text-to-Voice response")
+	}
+
+	// Create task record
+	task := &domain.Task{
+		ServiceName: "text-to-voice",
+		Status:      "completed",
+		InputData: json.RawMessage(fmt.Sprintf(`{"text":"%s","language":"%s","voice":"%s","speed":%f,"pitch":%f,"volume":%f}`,
+			text, language, voice, speed, pitch, volume)),
+		OutputData: json.RawMessage(fmt.Sprintf(`{"audio_url":"%s"}`, ttsResp["audio_url"])),
+	}
+
+	// Add CreateTask method to repository interface and implementation if not exists
+	if err := s.repo.CreateTask(context.Background(), task); err != nil {
+		log.Printf("HandleTextToVoice: Failed to create task record - %v", err)
+		// Continue even if task record creation fails
 	}
 
 	log.Printf("HandleTextToVoice: Successfully converted text to voice")

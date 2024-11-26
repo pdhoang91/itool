@@ -61,19 +61,19 @@ services:
     depends_on:
       - management-api
 
-  # text-to-voice:
-  #   build: ./services/text-to-voice
-  #   container_name: text_to_voice_service
-  #   environment:
-  #     - DB_HOST=db
-  #     - DB_PORT=5432
-  #     - DB_USER=admin
-  #     - DB_PASSWORD=password
-  #     - DB_NAME=ai_tools
-  #   ports:
-  #     - "5001:5001"
-  #   depends_on:
-  #     - db
+  text-to-voice:
+    build: ./services/text-to-voice
+    container_name: text_to_voice_service
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=admin
+      - DB_PASSWORD=password
+      - DB_NAME=ai_tools
+    ports:
+      - "5001:5001"
+    depends_on:
+      - db
 
   # voice-to-text:
   #   build: ./services/voice-to-text
@@ -89,21 +89,21 @@ services:
   #   depends_on:
   #     - db
 
-  # background-removal:
-  #   build: ./services/background-removal
-  #   container_name: background_removal_service
-  #   environment:
-  #     - DB_HOST=db
-  #     - DB_PORT=5432
-  #     - DB_USER=admin
-  #     - DB_PASSWORD=password
-  #     - DB_NAME=ai_tools
-  #   ports:
-  #     - "5003:5003"
-  #   depends_on:
-  #     - db
-  #   volumes:
-  #     - shared_images:/shared/images # Mount volume chung vào container
+  background-removal:
+    build: ./services/background-removal
+    container_name: background_removal_service
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=admin
+      - DB_PASSWORD=password
+      - DB_NAME=ai_tools
+    ports:
+      - "5003:5003"
+    depends_on:
+      - db
+    volumes:
+      - shared_images:/shared/images # Mount volume chung vào container
 
 #  speech-recognition:
 #    build: ./services/speech-recognition
@@ -133,19 +133,19 @@ services:
   #   depends_on:
   #     - db
 
-  # ocr:
-  #   build: ./services/ocr
-  #   container_name: ocr_service
-  #   environment:
-  #     - DB_HOST=db
-  #     - DB_PORT=5432
-  #     - DB_USER=admin
-  #     - DB_PASSWORD=password
-  #     - DB_NAME=ai_tools
-  #   ports:
-  #     - "5006:5006"
-  #   depends_on:
-  #     - db
+  ocr:
+    build: ./services/ocr
+    container_name: ocr_service
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=admin
+      - DB_PASSWORD=password
+      - DB_NAME=ai_tools
+    ports:
+      - "5006:5006"
+    depends_on:
+      - db
 
   # translation:
   #   build: ./services/translation

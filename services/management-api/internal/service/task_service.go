@@ -10,7 +10,9 @@ import (
 type TaskService interface {
 	GetTaskStatus(id int) (*domain.Task, error)
 	GetAllTasks() ([]domain.Task, error)
-	HandleTextToVoice(text, language string) (map[string]string, error)
+	//HandleTextToVoice(text, language string) (map[string]string, error)
+	//HandleTextToVoice(text, language, voice string, speed, pitch, volume float64) (map[string]string, error)
+	HandleTextToVoice(text, language, voice string, speed, pitch, volume float64) (map[string]string, error)
 	HandleVoiceToText(audioURL string) (map[string]string, error)
 	HandleBackgroundRemoval(imagePath string) (string, error)
 	HandleSpeechRecognition(audioURL string) (map[string]string, error)
@@ -21,14 +23,14 @@ type TaskService interface {
 }
 
 type taskService struct {
-	repo   repository.TaskRepository
 	client *resty.Client
+	repo   repository.TaskRepository
 }
 
-func NewTaskService(repo repository.TaskRepository) TaskService {
+func NewTaskService(client *resty.Client, repo repository.TaskRepository) TaskService {
 	return &taskService{
+		client: client,
 		repo:   repo,
-		client: resty.New(),
 	}
 }
 

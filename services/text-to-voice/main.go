@@ -17,8 +17,12 @@ import (
 )
 
 type ConvertRequest struct {
-	Text     string `json:"text"`
-	Language string `json:"language"`
+	Text     string  `json:"text" binding:"required"`
+	Voice    string  `json:"voice"` // voice type (male/female)
+	Language string  `json:"language"`
+	Speed    float64 `json:"speed" binding:"min=0.1"`  // speech rate (0.1-3.0)
+	Pitch    float64 `json:"pitch"`                    // voice pitch (-10 to 10)
+	Volume   float64 `json:"volume" binding:"min=0.1"` // volume (0.1-2.0)
 }
 
 type ConvertResponse struct {
@@ -39,12 +43,8 @@ var dbPool *pgxpool.Pool
 
 func main() {
 	log.Println("Starting Text-to-Voice service...")
-	//		// os.Setenv("DB_HOST", "localhost")
-	//		// os.Setenv("DB_PORT", "5433")
-	//		// os.Setenv("DB_USER", "admin")
-	//		// os.Setenv("DB_PASSWORD", "password")
-	//		// os.Setenv("DB_NAME", "ai_tools")
-	// Lấy thông tin kết nối cơ sở dữ liệu
+
+	// Database connection string
 	dbURL := fmt.Sprintf("postgres://%s:%s@%s:%s/%s",
 		os.Getenv("DB_USER"),
 		os.Getenv("DB_PASSWORD"),
@@ -54,7 +54,7 @@ func main() {
 	)
 	log.Printf("Connecting to database at %s\n", dbURL)
 
-	// Kết nối tới cơ sở dữ liệu
+	// Connect to database
 	var err error
 	dbPool, err = pgxpool.Connect(context.Background(), dbURL)
 	if err != nil {
@@ -79,13 +79,15 @@ func main() {
 	r.Static("/audio", "./audio")
 	log.Println("CORS configured successfully")
 
-	// Đăng ký route
-	r.POST("/convert", handleConvert)
+	// Register routes
+	r.POST("/tts", handleConvert)
+	r.GET("/voices", handleGetVoices)
 	log.Println("Routes registered. Starting server at :5001")
 	r.Run(":5001")
 }
+
 func handleConvert(c *gin.Context) {
-	log.Println("Received /convert request")
+	log.Println("Received /tts request")
 
 	// Parse JSON request
 	var req ConvertRequest
@@ -96,17 +98,49 @@ func handleConvert(c *gin.Context) {
 	}
 	log.Printf("Request payload: %v\n", req)
 
-	// Kiểm tra trường Language
+	// Set default values
 	if req.Language == "" {
-		req.Language = "en" // Giá trị mặc định nếu không có ngôn ngữ được cung cấp
+		req.Language = "en"
+	}
+	if req.Speed == 0 {
+		req.Speed = 1.0
+	}
+	if req.Volume == 0 {
+		req.Volume = 1.0
+	}
+	if req.Voice == "" {
+		req.Voice = "male" // default voice
 	}
 
-	// Insert task vào cơ sở dữ liệu
+	// Validate ranges
+	if req.Speed > 3.0 {
+		req.Speed = 3.0
+	}
+	if req.Volume > 2.0 {
+		req.Volume = 2.0
+	}
+	if req.Pitch < -10 {
+		req.Pitch = -10
+	} else if req.Pitch > 10 {
+		req.Pitch = 10
+	}
+
+	// Insert task into database
 	var taskID int
 	log.Println("Inserting task into database...")
+	inputData := map[string]interface{}{
+		"text":     req.Text,
+		"language": req.Language,
+		"voice":    req.Voice,
+		"speed":    req.Speed,
+		"pitch":    req.Pitch,
+		"volume":   req.Volume,
+	}
+	inputJSON, _ := json.Marshal(inputData)
+
 	err := dbPool.QueryRow(context.Background(),
 		"INSERT INTO tasks (service_name, status, input_data) VALUES ($1, $2, $3) RETURNING id",
-		"text-to-voice", "processing", map[string]string{"text": req.Text, "language": req.Language},
+		"text-to-voice", "processing", inputJSON,
 	).Scan(&taskID)
 	if err != nil {
 		log.Printf("Database error during task insertion: %v\n", err)
@@ -115,7 +149,7 @@ func handleConvert(c *gin.Context) {
 	}
 	log.Printf("Task inserted with ID: %d\n", taskID)
 
-	// Tạo thư mục nếu chưa tồn tại
+	// Create audio directory if not exists
 	audioDir := "audio"
 	if _, err = os.Stat(audioDir); os.IsNotExist(err) {
 		log.Printf("Audio directory %s does not exist. Creating...\n", audioDir)
@@ -128,11 +162,28 @@ func handleConvert(c *gin.Context) {
 		log.Printf("Audio directory %s created successfully\n", audioDir)
 	}
 
-	// Chuyển đổi Text-to-Voice
-	audioPath := fmt.Sprintf("output_%d", taskID) // Không thêm ".mp3"
-	tts := htgotts.Speech{Folder: audioDir, Language: req.Language, Handler: &handlers.MPlayer{}}
+	// Convert Text-to-Voice with SSML
+	audioPath := fmt.Sprintf("output_%d", taskID)
+	ssmlText := fmt.Sprintf(`
+		<speak>
+			<prosody rate="%g%%" pitch="%g%%" volume="%g%%">
+				%s
+			</prosody>
+		</speak>`,
+		req.Speed*100,
+		req.Pitch*10+100, // Convert pitch range from -10:10 to 0:200
+		req.Volume*100,
+		req.Text,
+	)
+
+	tts := htgotts.Speech{
+		Folder:   audioDir,
+		Language: req.Language,
+		Handler:  &handlers.MPlayer{},
+	}
+
 	log.Printf("Converting text to speech. Output file: %s\n", audioPath)
-	filePath, err := tts.CreateSpeechFile(req.Text, audioPath)
+	filePath, err := tts.CreateSpeechFile(ssmlText, audioPath)
 	if err != nil {
 		log.Printf("TTS conversion failed: %v\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "TTS conversion failed"})
@@ -140,12 +191,15 @@ func handleConvert(c *gin.Context) {
 	}
 	log.Printf("TTS conversion succeeded. File path: %s\n", filePath)
 
-	// Cập nhật task status và output_data
+	// Update task status and output_data
 	audioURL := fmt.Sprintf("http://localhost:5001/audio/output_%d.mp3", taskID)
+	outputData := map[string]string{"audio_url": audioURL}
+	outputJSON, _ := json.Marshal(outputData)
+
 	log.Printf("Updating task status to 'completed' with audio URL: %s\n", audioURL)
 	_, err = dbPool.Exec(context.Background(),
 		"UPDATE tasks SET status=$1, output_data=$2, updated_at=NOW() WHERE id=$3",
-		"completed", map[string]string{"audio_url": audioURL}, taskID,
+		"completed", outputJSON, taskID,
 	)
 	if err != nil {
 		log.Printf("Database update error: %v\n", err)
@@ -154,7 +208,27 @@ func handleConvert(c *gin.Context) {
 	}
 	log.Printf("Task ID %d updated successfully\n", taskID)
 
-	// Trả về kết quả
+	// Return result
 	log.Printf("Returning response with audio URL: %s\n", audioURL)
 	c.JSON(http.StatusOK, ConvertResponse{AudioURL: audioURL})
+}
+
+func handleGetVoices(c *gin.Context) {
+	// Currently supporting basic voice options
+	voices := []map[string]interface{}{
+		{
+			"id":       "male",
+			"name":     "Male Voice",
+			"language": "en",
+			"gender":   "male",
+		},
+		{
+			"id":       "female",
+			"name":     "Female Voice",
+			"language": "en",
+			"gender":   "female",
+		},
+	}
+
+	c.JSON(http.StatusOK, voices)
 }

@@ -26,8 +26,19 @@ axiosInstance.interceptors.request.use(
 // API Calls
 export const fetchTasks = () => axiosInstance.get('/tasks');
 
-export const convertTextToVoice = ({ text, language }) =>
-    axiosInstance.post('/tts', { text, language });
+// export const convertTextToVoice = ({ text, language }) =>
+//     axiosInstance.post('/tts', { text, language });
+
+// Updated TTS API call with more parameters
+export const convertTextToVoice = ({ text, voice, language, speed, pitch, volume }) =>
+    axiosInstance.post('/tts', {
+        text,
+        voice,
+        language,
+        speed,
+        pitch,
+        volume,
+    });
 
 export const convertVoiceToText = (audioUrl) =>
     axiosInstance.post('/vts', { audio_url: audioUrl });

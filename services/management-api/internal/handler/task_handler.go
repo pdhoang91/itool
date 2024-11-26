@@ -58,23 +58,69 @@ func (h *TaskHandler) GetAllTasks(c *gin.Context) {
 }
 
 // HandleTextToVoice xử lý endpoint /tts
+// func (h *TaskHandler) HandleTextToVoice(c *gin.Context) {
+// 	var req struct {
+// 		Text     string `json:"text" binding:"required"`
+// 		Language string `json:"language"`
+// 	}
+
+// 	if err := c.ShouldBindJSON(&req); err != nil {
+// 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
+// 		return
+// 	}
+
+// 	resp, err := h.service.HandleTextToVoice(req.Text, req.Language)
+// 	if err != nil {
+// 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+// 		return
+// 	}
+
+// 	c.JSON(http.StatusOK, resp)
+// }
+
 func (h *TaskHandler) HandleTextToVoice(c *gin.Context) {
+	log.Println("HandleTextToVoice: Received request")
+
 	var req struct {
-		Text     string `json:"text" binding:"required"`
-		Language string `json:"language"`
+		Text     string  `json:"text" binding:"required"`
+		Language string  `json:"language"`
+		Voice    string  `json:"voice"`
+		Speed    float64 `json:"speed"`
+		Pitch    float64 `json:"pitch"`
+		Volume   float64 `json:"volume"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Printf("HandleTextToVoice: Invalid input - %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
 		return
 	}
 
-	resp, err := h.service.HandleTextToVoice(req.Text, req.Language)
+	// Set default values if not provided
+	if req.Language == "" {
+		req.Language = "vi"
+	}
+	if req.Speed == 0 {
+		req.Speed = 1.0
+	}
+	if req.Pitch == 0 {
+		req.Pitch = 1.0
+	}
+	if req.Volume == 0 {
+		req.Volume = 1.0
+	}
+
+	log.Printf("HandleTextToVoice: Processing request - Text: %s, Language: %s, Voice: %s",
+		req.Text, req.Language, req.Voice)
+
+	resp, err := h.service.HandleTextToVoice(req.Text, req.Language, req.Voice, req.Speed, req.Pitch, req.Volume)
 	if err != nil {
+		log.Printf("HandleTextToVoice: Service error - %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
+	log.Printf("HandleTextToVoice: Success - Response: %v", resp)
 	c.JSON(http.StatusOK, resp)
 }
 

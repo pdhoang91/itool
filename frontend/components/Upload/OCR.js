@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { performOCR } from '../../services/api';
+import Image from 'next/image';
 
 export default function OCR({ setResult }) {
     const [imageFile, setImageFile] = useState(null);
@@ -83,7 +84,7 @@ export default function OCR({ setResult }) {
                 {imagePreview && (
                     <div className="border p-4 rounded">
                         <h3 className="font-semibold mb-2">Hình ảnh đã chọn:</h3>
-                        <img 
+                        <Image 
                             src={imagePreview} 
                             alt="Preview" 
                             className="max-w-full h-auto"
