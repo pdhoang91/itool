@@ -22,7 +22,7 @@ func SetupRouter(taskHandler handler.TaskHandler, cfg *config.Config) *gin.Engin
 
 	r.Use(cors.New(corsConfig))
 
-	r.Static("/uploads", "./uploads")
+	r.Static("/uploads", "/shared/images")
 	r.Static("/images", "/shared/images")
 	//r.Static("/shared", "/shared/images")
 

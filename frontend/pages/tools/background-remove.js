@@ -43,19 +43,41 @@ const BackgroundRemovePage = () => {
     }
   };
 
+  // const handleRemoveBackground = async () => {
+  //   if (!imageFile) {
+  //     setError('Vui lòng tải lên hình ảnh trước.');
+  //     return;
+  //   }
+
+  //   setLoading(true);
+  //   try {
+  //     const response = await removeBackground(imageFile);
+  //     console.log("response", response)
+  //     setProcessedImage(response.data.processedImageUrl);
+  //     setError(null);
+  //   } catch (err) {
+  //     setError('Có lỗi xảy ra khi xử lý hình ảnh: ' + (err.response?.data?.message || err.message));
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
   const handleRemoveBackground = async () => {
     if (!imageFile) {
       setError('Vui lòng tải lên hình ảnh trước.');
       return;
     }
-
+  
     setLoading(true);
     try {
       const response = await removeBackground(imageFile);
-      console.log("response", response)
-      setProcessedImage(response.data.processedImageUrl);
+      console.log("response", response); // để debug
+  
+      // Sửa lại cách lấy đường dẫn
+      const imagePath = response.data.processed_image_path;
+      setProcessedImage(`http://localhost:81/uploads/${imagePath}`);
       setError(null);
     } catch (err) {
+      console.error("Error:", err); // để debug
       setError('Có lỗi xảy ra khi xử lý hình ảnh: ' + (err.response?.data?.message || err.message));
     } finally {
       setLoading(false);
