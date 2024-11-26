@@ -53,13 +53,13 @@ services:
     depends_on:
       - db
 
-  frontend:
-    build: ./frontend
-    container_name: frontend
-    ports:
-      - "3000:3000"
-    depends_on:
-      - management-api
+  # frontend:
+  #   build: ./frontend
+  #   container_name: frontend
+  #   ports:
+  #     - "3000:3000"
+  #   depends_on:
+  #     - management-api
 
   text-to-voice:
     build: ./services/text-to-voice
