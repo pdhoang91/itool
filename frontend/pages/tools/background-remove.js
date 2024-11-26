@@ -1,30 +1,7 @@
 import React, { useState } from 'react';
 import { Upload, Image, Download } from 'lucide-react';
+import DashboardLayout from '../../components/DashboardLayout';
 
-const DashboardLayout = ({ children, title }) => (
-  <div className="min-h-screen bg-gray-50">
-    <div className="flex h-screen overflow-hidden">
-      <div className="flex flex-col flex-1 overflow-hidden">
-        <header className="bg-white shadow-sm z-10">
-          <div className="px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between h-16">
-              <h1 className="flex items-center text-2xl font-semibold text-gray-900">
-                {title}
-              </h1>
-            </div>
-          </div>
-        </header>
-        <main className="flex-1 relative overflow-y-auto">
-          <div className="py-6">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
-              {children}
-            </div>
-          </div>
-        </main>
-      </div>
-    </div>
-  </div>
-);
 
 const BackgroundRemovePage = () => {
   const [imageFile, setImageFile] = useState(null);
