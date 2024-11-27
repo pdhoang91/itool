@@ -75,6 +75,7 @@ services:
       - DB_USER=admin
       - DB_PASSWORD=password
       - DB_NAME=ai_tools
+      - PYTHONUNBUFFERED=1
     ports:
       - "5001:5001"
     depends_on:
