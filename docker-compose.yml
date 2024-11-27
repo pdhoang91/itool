@@ -66,9 +66,9 @@ services:
   #   depends_on:
   #     - management-api
 
-  text-to-voice:
-    build: ./services/text-to-voice
-    container_name: text_to_voice_service
+  text-to-speech:
+    build: ./services/text-to-speech
+    container_name: text_to_speech_service
     environment:
       - DB_HOST=db
       - DB_PORT=5432
