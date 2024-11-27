@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     pkg-config \
     ffmpeg \
     libsndfile1 \
+    espeak-ng \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
