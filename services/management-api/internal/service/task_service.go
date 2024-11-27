@@ -89,7 +89,8 @@ type LanguageListResponse struct {
 // TTSResponse đại diện cho phản hồi từ API /tts
 type TTSResponse struct {
 	AudioURL string `json:"audio_url"`
-	Status   string `json:"status"`
+	FileName string `json:"filename"`
+	Success  bool   `json:"success"`
 }
 
 // Voice đại diện cho một voice model
@@ -170,11 +171,11 @@ func (s *taskService) HandleTextToVoice(ctx context.Context, text, language, mod
 		return nil, fmt.Errorf("error decoding TTS response: %w", err)
 	}
 
-	if ttsResp.Status != "success" {
-		return nil, fmt.Errorf("TTS request failed with status: %s", ttsResp.Status)
+	if !ttsResp.Success {
+		return nil, fmt.Errorf("TTS request failed with status: %s", ttsResp.Success)
 	}
 
-	return map[string]string{"audio_url": ttsResp.AudioURL}, nil
+	return map[string]string{"audio_url": "/mp3/" + ttsResp.FileName}, nil
 }
 
 // GetAvailableModels lấy danh sách các model TTS có sẵn từ dịch vụ TTS

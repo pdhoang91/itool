@@ -26,7 +26,7 @@ services:
       - DB_PASSWORD=password
       - DB_NAME=ai_tools
     volumes:
-      - shared:/shared/images # Mount volume chung vào container
+      - shared:/shared/static # Mount volume chung vào container
     ports:
       - "81:81"
     depends_on:
@@ -51,7 +51,7 @@ services:
       - DB_PASSWORD=password
       - DB_NAME=ai_tools
     volumes:
-      - shared:/shared/images # Mount volume chung vào container
+      - shared:/shared/static # Mount volume chung vào container
     ports:
       - "82:82"
     depends_on:
@@ -90,7 +90,7 @@ services:
     tmpfs:
       - /tmp:exec,size=2G
     volumes:
-      - shared:/shared/mp3 # Mount volume chung vào container
+      - shared:/shared/static # Mount volume chung vào container
   # voice-to-text:
   #   build: ./services/voice-to-text
   #   container_name: voice_to_text_service
@@ -119,7 +119,7 @@ services:
     depends_on:
       - db
     volumes:
-      - shared:/shared/images # Mount volume chung vào container
+      - shared:/shared/static # Mount volume chung vào container
     networks:
       - app-network
 #  speech-recognition:

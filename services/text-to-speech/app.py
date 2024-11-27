@@ -13,7 +13,7 @@ from datetime import datetime
 app = Flask(__name__)
 
 # Add constants for file storage
-AUDIO_DIR = "/shared/images"
+AUDIO_DIR = "/shared/static"
 os.makedirs(AUDIO_DIR, exist_ok=True)
 
 # Initialize model and synthesizer
@@ -138,7 +138,7 @@ def text_to_speech():
         
         return jsonify({
             'success': True,
-            'file_path': filepath,
+            'audio_url': filepath,
             'filename': filename
         })
         

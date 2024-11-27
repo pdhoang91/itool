@@ -3,6 +3,7 @@ package router
 import (
 	"management-api/internal/config"
 	"management-api/internal/handler"
+	"strings"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -21,11 +22,16 @@ func SetupRouter(taskHandler handler.TaskHandler, cfg *config.Config) *gin.Engin
 	}
 
 	r.Use(cors.New(corsConfig))
+	r.Use(func(c *gin.Context) {
+		if strings.HasSuffix(c.Request.URL.Path, ".wav") {
+			c.Header("Content-Type", "audio/wav")
+		}
+		c.Next()
+	})
 
-	r.Static("/uploads", "/shared/images")
-	r.Static("/images", "/shared/images")
-	r.Static("/mp3", "/shared/mp3")
-	//r.Static("/shared", "/shared/images")
+	r.Static("/uploads", "/shared/static")
+	r.Static("/images", "/shared/static")
+	r.Static("/mp3", "/shared/static")
 
 	// Các endpoint tương ứng với từng service
 	// TTS endpoints
