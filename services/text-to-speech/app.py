@@ -6,14 +6,14 @@ from TTS.utils.manage import ModelManager
 from TTS.api import TTS
 import io
 import soundfile as sf
+import librosa
 
 app = Flask(__name__)
 
-# Khởi tạo model và synthesizer
+# Initialize model and synthesizer
 model_manager = ModelManager()
 global model_name, synthesizer
 
-# Sử dụng model tiếng Anh mặc định
 model_name = "tts_models/en/ljspeech/tacotron2-DDC"
 
 try:
@@ -25,7 +25,6 @@ try:
     )
 except Exception as e:
     print(f"Error loading default model: {e}")
-    # Fallback to another model if available
     available_models = TTS().list_models()
     if available_models:
         model_name = available_models[0]
@@ -88,6 +87,27 @@ def get_languages():
     except Exception as e:
         return {'error': str(e)}, 500
 
+
+def adjust_speed_pitch(audio, speed=1.0, pitch=1.0):
+    """
+    Adjust speed and pitch of audio using librosa
+    """
+    # Time stretch for speed adjustment
+    if speed != 1.0:
+        audio = librosa.effects.time_stretch(audio, rate=1/speed)
+    
+    # Pitch shift (in semitones)
+    if pitch != 1.0:
+        # Convert pitch multiplier to semitones
+        n_steps = 12 * np.log2(pitch)
+        audio = librosa.effects.pitch_shift(
+            y=audio,
+            sr=synthesizer.output_sample_rate,
+            n_steps=n_steps
+        )
+    
+    return audio
+
 @app.route('/tts', methods=['POST'])
 def text_to_speech():
     global model_name, synthesizer
@@ -98,7 +118,7 @@ def text_to_speech():
         pitch = float(data.get('pitch', 1.0))
         selected_model = data.get('model', model_name)
         
-        # Kiểm tra và tải model mới nếu cần
+        # Check and load new model if needed
         if selected_model != model_name:
             try:
                 new_model_path, new_config_path, _ = model_manager.download_model(selected_model)
@@ -111,16 +131,13 @@ def text_to_speech():
             except Exception as e:
                 return {'error': f'Model not found: {str(e)}'}, 404
         
-        # Tổng hợp giọng nói
-        wav = synthesizer.tts(
-            text,
-            speaker_wav=None,
-            speaker_name=None,
-            speed=speed,
-            pitch=pitch
-        )
+        # Generate speech without speed/pitch modifications
+        wav = synthesizer.tts(text)
         
-        # Chuyển đổi numpy array thành bytes
+        # Apply speed and pitch adjustments
+        wav = adjust_speed_pitch(wav, speed, pitch)
+        
+        # Convert to bytes
         wav_bytes = io.BytesIO()
         sf.write(wav_bytes, wav, synthesizer.output_sample_rate, format='WAV')
         wav_bytes.seek(0)

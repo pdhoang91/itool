@@ -1,12 +1,24 @@
 package service
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"time"
+)
 
-	"github.com/go-resty/resty/v2"
+const (
+	TTSServiceURL         = "http://localhost:5001"
+	VoiceToTextServiceURL = "http://voice_to_text_service:5002"
+	BackgroundServiceURL  = "http://background_removal_service:5003"
+	SpeechServiceURL      = "http://speech_recognition_service:5004"
+	FaceServiceURL        = "http://face_recognition_service:5005"
+	OCRServiceURL         = "http://ocr_service:5006"
+	TranslationServiceURL = "http://translation_service:5007"
+	DefaultTimeout        = 30 * time.Second
 )
 
 type TaskService interface {
@@ -23,26 +35,42 @@ type TaskService interface {
 }
 
 type taskService struct {
-	client *resty.Client
+	httpClient *http.Client
 }
 
-func NewTaskService(client *resty.Client) TaskService {
+func NewTaskService() TaskService {
 	return &taskService{
-		client: client,
+		httpClient: &http.Client{
+			Timeout: DefaultTimeout,
+		},
 	}
 }
 
-const (
-	TTS_SERVICE_URL = "http://localhost:5001"
-)
-
-type TTSResponse struct {
-	AudioURL string `json:"audio_url"`
+type TTSRequest struct {
+	Text     string  `json:"text"`
+	Speed    float64 `json:"speed"`
+	Pitch    float64 `json:"pitch"`
+	Model    string  `json:"model"`
+	Language string  `json:"language"`
+	Volume   float64 `json:"volume"`
 }
 
 type Language struct {
 	Code string `json:"code"`
 	Name string `json:"name"`
+}
+
+type LanguageResponse struct {
+	Code      string     `json:"code"`
+	Name      string     `json:"name"`
+	Languages []Language `json:"language"`
+}
+
+type ModelsResponse struct {
+	Code             string      `json:"code"`
+	Name             string      `json:"name"`
+	Languages        []Language  `json:"language"`
+	ModelsByLanguage interface{} `json:"modelsByLanguage"`
 }
 
 type Voice struct {
@@ -53,213 +81,227 @@ type Voice struct {
 	Language string `json:"language"`
 }
 
+func (s *taskService) makeRequest(method, url string, body interface{}) (*http.Response, error) {
+	var reqBody io.Reader
+	if body != nil {
+		jsonData, err := json.Marshal(body)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling request: %v", err)
+		}
+		reqBody = bytes.NewBuffer(jsonData)
+	}
+
+	req, err := http.NewRequest(method, url, reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request: %v", err)
+	}
+
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("error making request: %v", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		resp.Body.Close()
+		return nil, fmt.Errorf("service returned status: %d", resp.StatusCode)
+	}
+
+	return resp, nil
+}
+
 func (s *taskService) HandleTextToVoice(text, language, voice string, speed, pitch, volume float64) (map[string]string, error) {
-	log.Printf("Starting TTS conversion: text=%s, language=%s, voice=%s", text, language, voice)
-
-	// Create task record
-	// task := &domain.Task{
-	// 	ServiceName: "text-to-voice",
-	// 	Status:      "processing",
-	// 	InputData:   json.RawMessage(fmt.Sprintf(`{"text":"%s","language":"%s","voice":"%s","speed":%f,"pitch":%f,"volume":%f}`, text, language, voice, speed, pitch, volume)),
-	// 	CreatedAt:   time.Now(),
-	// 	UpdatedAt:   time.Now(),
-	// }
-
-	// Save initial task
-	// taskID, err := s.repo.CreateTask(task)
-	// if err != nil {
-	// 	log.Printf("Failed to create task record: %v", err)
-	// 	return nil, fmt.Errorf("failed to create task: %v", err)
-	// }
-
-	// Prepare request to TTS service
-	ttsReq := map[string]interface{}{
-		"text":     text,
-		"language": language,
-		"voice":    voice,
-		"speed":    speed,
-		"pitch":    pitch,
-		"volume":   volume,
+	ttsReq := TTSRequest{
+		Text:     text,
+		Speed:    speed,
+		Pitch:    pitch,
+		Model:    voice,
+		Language: language,
+		Volume:   volume,
 	}
 
-	var ttsResp TTSResponse
-	resp, err := s.client.R().
-		SetBody(ttsReq).
-		SetResult(&ttsResp).
-		Post(fmt.Sprintf("%s/tts", TTS_SERVICE_URL))
-
-	if err != nil || resp.IsError() {
-		log.Printf("TTS service error: %v, response: %s", err, resp.String())
-		// Update task status to failed
-		//s.updateTaskStatus(taskID, "failed", nil)
-		return nil, fmt.Errorf("TTS service error: %v", err)
+	resp, err := s.makeRequest(http.MethodPost, fmt.Sprintf("%s/tts", TTSServiceURL), ttsReq)
+	fmt.Println("resp", resp)
+	if err != nil {
+		fmt.Println("err", err)
+		return nil, err
 	}
+	defer resp.Body.Close()
 
-	// Update task status to completed
-	outputData := map[string]string{"audio_url": ttsResp.AudioURL}
-	// outputJSON, _ := json.Marshal(outputData)
-	// err = s.updateTaskStatus(taskID, "completed", outputJSON)
-	// if err != nil {
-	// 	log.Printf("Failed to update task status: %v", err)
-	// }
-
-	return outputData, nil
+	audioURL := fmt.Sprintf("http://localhost:81/uploads/audio/output_%d.wav", time.Now().Unix())
+	return map[string]string{"audio_url": audioURL}, nil
 }
 
 func (s *taskService) GetAvailableLanguages() ([]Language, error) {
-	var languages []Language
+	resp, err := s.makeRequest(http.MethodGet, fmt.Sprintf("%s/models/languages", TTSServiceURL), nil)
+	fmt.Println("resp", resp)
+	if err != nil {
+		fmt.Println("err", err)
+		return nil, err
+	}
+	defer resp.Body.Close()
 
-	resp, err := s.client.R().
-		SetResult(&languages).
-		Get(fmt.Sprintf("%s/languages", TTS_SERVICE_URL))
+	var langResp LanguageResponse
+	if err := json.NewDecoder(resp.Body).Decode(&langResp); err != nil {
+		return nil, fmt.Errorf("error decoding response: %v", err)
+	}
 
-	if err != nil || resp.IsError() {
-		log.Printf("Failed to fetch languages: %v", err)
-		return nil, fmt.Errorf("failed to fetch languages: %v", err)
+	languages := make([]Language, len(langResp.Languages))
+	for i, lang := range langResp.Languages {
+		languages[i] = Language{
+			Code: lang.Code,
+			Name: lang.Name,
+		}
 	}
 
 	return languages, nil
 }
 
 func (s *taskService) GetAvailableVoices(language string) ([]Voice, error) {
-	var voices []Voice
-
-	resp, err := s.client.R().
-		SetResult(&voices).
-		Get(fmt.Sprintf("%s/voices/%s", TTS_SERVICE_URL, language))
-
-	if err != nil || resp.IsError() {
-		log.Printf("Failed to fetch voices for language %s: %v", language, err)
-		return nil, fmt.Errorf("failed to fetch voices: %v", err)
+	resp, err := s.makeRequest(http.MethodGet, fmt.Sprintf("%s/models", TTSServiceURL), nil)
+	fmt.Println("resp", resp)
+	if err != nil {
+		fmt.Println("err", err)
+		return nil, err
 	}
+	defer resp.Body.Close()
+
+	var modelsResp ModelsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&modelsResp); err != nil {
+		return nil, fmt.Errorf("error decoding response: %v", err)
+	}
+
+	var voices []Voice
+	// if models, ok := modelsResp.ModelsByLanguage[language]; ok {
+	// 	voices = make([]Voice, len(models))
+	// 	for i, model := range models {
+	// 		voices[i] = Voice{
+	// 			ID:       model.ModelID,
+	// 			Name:     model.Architecture,
+	// 			Language: model.Language,
+	// 			Model:    model.ModelID,
+	// 		}
+	// 	}
+	// }
 
 	return voices, nil
 }
 
-// HandleVoiceToText xử lý dịch vụ Voice-to-Text
 func (s *taskService) HandleVoiceToText(audioURL string) (map[string]string, error) {
-	resp, err := s.client.R().
-		SetHeader("Content-Type", "application/json").
-		SetBody(map[string]string{"audio_url": audioURL}).
-		Post("http://voice_to_text_service:5002/convert")
-	if err != nil || resp.StatusCode() != 200 {
-		return nil, fmt.Errorf("failed to call Voice-to-Text service")
+	resp, err := s.makeRequest(http.MethodPost, fmt.Sprintf("%s/convert", VoiceToTextServiceURL),
+		map[string]string{"audio_url": audioURL})
+
+	fmt.Println("resp", resp)
+	if err != nil {
+		fmt.Println("err", err)
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var result map[string]string
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("error decoding response: %v", err)
 	}
 
-	var vtsResp map[string]string
-	if err := json.Unmarshal(resp.Body(), &vtsResp); err != nil {
-		return nil, fmt.Errorf("failed to parse Voice-to-Text response")
-	}
-
-	return vtsResp, nil
+	return result, nil
 }
 
 func (s *taskService) HandleBackgroundRemoval(imagePath string) (string, error) {
-	log.Printf("HandleBackgroundRemoval: Received request with image path '%s'", imagePath)
+	log.Printf("Processing background removal for image: %s", imagePath)
 
-	resp, err := s.client.R().
-		SetFile("image", imagePath).
-		Post("http://background_removal_service:5003/remove-bg")
+	resp, err := s.makeRequest(http.MethodPost, fmt.Sprintf("%s/remove-bg", BackgroundServiceURL),
+		map[string]string{"image_path": imagePath})
 	if err != nil {
-		log.Printf("HandleBackgroundRemoval: Failed to call Background Removal service. Error: %v", err)
-		return "", fmt.Errorf("failed to call Background Removal service")
+		log.Printf("Background removal failed: %v", err)
+		return "", err
 	}
-
-	if resp.StatusCode() != http.StatusOK {
-		log.Printf("HandleBackgroundRemoval: Service returned non-200 status. StatusCode: %d, Response: %s", resp.StatusCode(), resp.String())
-		return "", fmt.Errorf("failed to call Background Removal service with StatusCode: %d", resp.StatusCode())
-	}
-
-	var brResp struct {
-		ProcessedImagePath string `json:"processed_image_path"`
-	}
-	if err := json.Unmarshal(resp.Body(), &brResp); err != nil {
-		log.Printf("HandleBackgroundRemoval: Failed to parse service response. Error: %v, Raw Response: %s", err, resp.String())
-		return "", fmt.Errorf("failed to parse Background Removal response")
-	}
-
-	log.Printf("HandleBackgroundRemoval: Successfully processed background removal for image '%s'", imagePath)
-	return brResp.ProcessedImagePath, nil
-}
-
-// HandleSpeechRecognition xử lý dịch vụ Speech Recognition
-func (s *taskService) HandleSpeechRecognition(audioURL string) (map[string]string, error) {
-	resp, err := s.client.R().
-		SetHeader("Content-Type", "application/json").
-		SetBody(map[string]string{"audio_url": audioURL}).
-		Post("http://speech_recognition_service:5004/recognize")
-	if err != nil || resp.StatusCode() != 200 {
-		return nil, fmt.Errorf("failed to call Speech Recognition service")
-	}
-
-	var srResp map[string]string
-	if err := json.Unmarshal(resp.Body(), &srResp); err != nil {
-		return nil, fmt.Errorf("failed to parse Speech Recognition response")
-	}
-
-	return srResp, nil
-}
-
-// HandleFaceRecognition xử lý dịch vụ Face Recognition
-func (s *taskService) HandleFaceRecognition(imagePath string) (map[string]interface{}, error) {
-	resp, err := s.client.R().
-		SetFile("image", imagePath).
-		Post("http://face_recognition_service:5005/recognize-face")
-	if err != nil || resp.StatusCode() != 200 {
-		return nil, fmt.Errorf("failed to call Face Recognition service")
-	}
-
-	var frResp map[string]interface{}
-	if err := json.Unmarshal(resp.Body(), &frResp); err != nil {
-		return nil, fmt.Errorf("failed to parse Face Recognition response")
-	}
-
-	return frResp, nil
-}
-
-// HandleOCR xử lý dịch vụ OCR
-func (s *taskService) HandleOCR(imagePath string) (map[string]string, error) {
-	resp, err := s.client.R().
-		SetFile("image", imagePath).
-		Post("http://ocr_service:5006/ocr")
-	if err != nil || resp.StatusCode() != 200 {
-		return nil, fmt.Errorf("failed to call OCR service")
-	}
+	defer resp.Body.Close()
 
 	fmt.Println("resp", resp)
 
-	var ocrResp map[string]string
-	if err := json.Unmarshal(resp.Body(), &ocrResp); err != nil {
-		return nil, fmt.Errorf("failed to parse OCR response")
+	var result struct {
+		ProcessedImagePath string `json:"processed_image_path"`
 	}
-	fmt.Println("ocrResp", ocrResp)
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("error decoding response: %v", err)
+	}
 
-	return ocrResp, nil
+	log.Printf("Successfully processed image. Result: %s", result.ProcessedImagePath)
+	return result.ProcessedImagePath, nil
 }
 
-// HandleTranslation xử lý dịch vụ Translation
+func (s *taskService) HandleSpeechRecognition(audioURL string) (map[string]string, error) {
+	resp, err := s.makeRequest(http.MethodPost, fmt.Sprintf("%s/recognize", SpeechServiceURL),
+		map[string]string{"audio_url": audioURL})
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	fmt.Println("resp", resp)
+	var result map[string]string
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("error decoding response: %v", err)
+	}
+
+	return result, nil
+}
+
+func (s *taskService) HandleFaceRecognition(imagePath string) (map[string]interface{}, error) {
+	resp, err := s.makeRequest(http.MethodPost, fmt.Sprintf("%s/recognize-face", FaceServiceURL),
+		map[string]string{"image_path": imagePath})
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("error decoding response: %v", err)
+	}
+
+	return result, nil
+}
+
+func (s *taskService) HandleOCR(imagePath string) (map[string]string, error) {
+	resp, err := s.makeRequest(http.MethodPost, fmt.Sprintf("%s/ocr", OCRServiceURL),
+		map[string]string{"image_path": imagePath})
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var result map[string]string
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("error decoding response: %v", err)
+	}
+
+	return result, nil
+}
+
 func (s *taskService) HandleTranslation(text, destLang string) (map[string]string, error) {
-	resp, err := s.client.R().
-		SetHeader("Content-Type", "application/json").
-		SetBody(map[string]string{"text": text, "dest_lang": destLang}).
-		Post("http://translation_service:5007/translate")
-	if err != nil || resp.StatusCode() != 200 {
-		return nil, fmt.Errorf("failed to call Translation service")
+	resp, err := s.makeRequest(http.MethodPost, fmt.Sprintf("%s/translate", TranslationServiceURL),
+		map[string]string{
+			"text":      text,
+			"dest_lang": destLang,
+		})
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var result map[string]string
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("error decoding response: %v", err)
 	}
 
-	var trResp map[string]string
-	if err := json.Unmarshal(resp.Body(), &trResp); err != nil {
-		return nil, fmt.Errorf("failed to parse Translation response")
-	}
-
-	return trResp, nil
+	return result, nil
 }
 
-// UploadAudio xử lý tải lên file audio
 func (s *taskService) UploadAudio(filePath string) (string, error) {
-	// Ở đây bạn có thể triển khai việc upload lên S3 hoặc dịch vụ lưu trữ khác.
-	// Dưới đây là ví dụ trả về đường dẫn tạm thời.
-
 	audioURL := fmt.Sprintf("http://localhost:81/uploads/audio/%s", filePath)
 	return audioURL, nil
 }

@@ -9,8 +9,6 @@ import (
 	"management-api/internal/handler"
 	"management-api/internal/router"
 	"management-api/internal/service"
-
-	"github.com/go-resty/resty/v2"
 )
 
 func main() {
@@ -21,8 +19,7 @@ func main() {
 	}
 
 	// Initialize service with both HTTP client and repository
-	client := resty.New()
-	taskService := service.NewTaskService(client)
+	taskService := service.NewTaskService()
 
 	// Initialize handler
 	taskHandler := handler.NewTaskHandler(taskService)
