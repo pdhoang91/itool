@@ -3,7 +3,6 @@ package handler
 import (
 	"log"
 	"net/http"
-	"strconv"
 
 	"management-api/internal/service"
 	"management-api/pkg/utils"
@@ -19,64 +18,34 @@ func NewTaskHandler(service service.TaskService) *TaskHandler {
 	return &TaskHandler{service: service}
 }
 
-// GetTaskStatus lấy trạng thái của một task
-func (h *TaskHandler) GetTaskStatus(c *gin.Context) {
-	idParam := c.Param("id")
-	log.Printf("GetTaskStatus: Received request with ID %s", idParam)
+func (h *TaskHandler) GetAvailableLanguages(c *gin.Context) {
+	log.Println("GetAvailableLanguages: Received request")
 
-	id, err := strconv.Atoi(idParam)
+	languages, err := h.service.GetAvailableLanguages()
 	if err != nil {
-		log.Printf("GetTaskStatus: Invalid task ID %s. Error: %v", idParam, err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid task ID"})
+		log.Printf("GetAvailableLanguages: Error fetching languages - %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch languages"})
 		return
 	}
 
-	task, err := h.service.GetTaskStatus(id)
-	if err != nil {
-		log.Printf("GetTaskStatus: Task with ID %d not found. Error: %v", id, err)
-		c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
-		return
-	}
-
-	log.Printf("GetTaskStatus: Successfully retrieved task ID %d", id)
-	c.JSON(http.StatusOK, task)
+	log.Printf("GetAvailableLanguages: Successfully retrieved %d languages", len(languages))
+	c.JSON(http.StatusOK, languages)
 }
 
-// GetAllTasks lấy danh sách tất cả các task
-func (h *TaskHandler) GetAllTasks(c *gin.Context) {
-	log.Println("GetAllTasks: Received request for all tasks")
+func (h *TaskHandler) GetAvailableVoices(c *gin.Context) {
+	language := c.Param("language")
+	log.Printf("GetAvailableVoices: Received request for language: %s", language)
 
-	tasks, err := h.service.GetAllTasks()
+	voices, err := h.service.GetAvailableVoices(language)
 	if err != nil {
-		log.Printf("GetAllTasks: Failed to retrieve tasks. Error: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database query error"})
+		log.Printf("GetAvailableVoices: Error fetching voices - %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch voices"})
 		return
 	}
 
-	log.Printf("GetAllTasks: Successfully retrieved %d tasks", len(tasks))
-	c.JSON(http.StatusOK, tasks)
+	log.Printf("GetAvailableVoices: Successfully retrieved %d voices for language %s", len(voices), language)
+	c.JSON(http.StatusOK, voices)
 }
-
-// HandleTextToVoice xử lý endpoint /tts
-// func (h *TaskHandler) HandleTextToVoice(c *gin.Context) {
-// 	var req struct {
-// 		Text     string `json:"text" binding:"required"`
-// 		Language string `json:"language"`
-// 	}
-
-// 	if err := c.ShouldBindJSON(&req); err != nil {
-// 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
-// 		return
-// 	}
-
-// 	resp, err := h.service.HandleTextToVoice(req.Text, req.Language)
-// 	if err != nil {
-// 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-// 		return
-// 	}
-
-// 	c.JSON(http.StatusOK, resp)
-// }
 
 func (h *TaskHandler) HandleTextToVoice(c *gin.Context) {
 	log.Println("HandleTextToVoice: Received request")
@@ -96,15 +65,15 @@ func (h *TaskHandler) HandleTextToVoice(c *gin.Context) {
 		return
 	}
 
-	// Set default values if not provided
+	// Set default values
 	if req.Language == "" {
-		req.Language = "vi"
+		req.Language = "en"
 	}
 	if req.Speed == 0 {
 		req.Speed = 1.0
 	}
 	if req.Pitch == 0 {
-		req.Pitch = 1.0
+		req.Pitch = 0.0
 	}
 	if req.Volume == 0 {
 		req.Volume = 1.0
@@ -113,7 +82,14 @@ func (h *TaskHandler) HandleTextToVoice(c *gin.Context) {
 	log.Printf("HandleTextToVoice: Processing request - Text: %s, Language: %s, Voice: %s",
 		req.Text, req.Language, req.Voice)
 
-	resp, err := h.service.HandleTextToVoice(req.Text, req.Language, req.Voice, req.Speed, req.Pitch, req.Volume)
+	resp, err := h.service.HandleTextToVoice(
+		req.Text,
+		req.Language,
+		req.Voice,
+		req.Speed,
+		req.Pitch,
+		req.Volume,
+	)
 	if err != nil {
 		log.Printf("HandleTextToVoice: Service error - %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

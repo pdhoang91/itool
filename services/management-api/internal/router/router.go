@@ -26,12 +26,12 @@ func SetupRouter(taskHandler handler.TaskHandler, cfg *config.Config) *gin.Engin
 	r.Static("/images", "/shared/images")
 	//r.Static("/shared", "/shared/images")
 
-	// Endpoint nhiệm vụ
-	r.GET("/tasks/:id", taskHandler.GetTaskStatus)
-	r.GET("/tasks", taskHandler.GetAllTasks)
-
 	// Các endpoint tương ứng với từng service
+	// TTS endpoints
+	r.GET("/tts/languages", taskHandler.GetAvailableLanguages)
+	r.GET("/tts/voices/:language", taskHandler.GetAvailableVoices)
 	r.POST("/tts", taskHandler.HandleTextToVoice)
+
 	r.POST("/vts", taskHandler.HandleVoiceToText)
 	r.POST("/remove-bg", taskHandler.HandleBackgroundRemoval)
 	r.POST("/speech-recognition", taskHandler.HandleSpeechRecognition)

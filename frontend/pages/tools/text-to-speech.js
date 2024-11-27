@@ -1,26 +1,38 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Volume2, Upload, Download } from 'lucide-react';
 import DashboardLayout from '../../components/DashboardLayout';
-import { convertTextToVoice, uploadAudio } from '../../services/api';
+import { convertTextToVoice } from '../../services/api';
 
 const TextToSpeechPage = () => {
   const [text, setText] = useState('');
-  const [selectedVoice, setSelectedVoice] = useState('female_1');
+  const [selectedVoice, setSelectedVoice] = useState('tts_models/en/ljspeech/vits');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [audioUrl, setAudioUrl] = useState(null);
   const [speed, setSpeed] = useState(1.0);
-  const [pitch, setPitch] = useState(1.0);
+  const [availableVoices, setAvailableVoices] = useState([]);
   const [previewPlaying, setPreviewPlaying] = useState(false);
   const audioRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  const voices = [
-    { id: 'female_1', name: 'Hoài My', gender: 'female', lang: 'vi' },
-    { id: 'male_1', name: 'Nam Minh', gender: 'male', lang: 'vi' },
-    { id: 'female_2', name: 'Thu Hà', gender: 'female', lang: 'vi' },
-    { id: 'male_2', name: 'Duy Anh', gender: 'male', lang: 'vi' }
-  ];
+  // Fetch available voices on component mount
+  useEffect(() => {
+    fetchVoices();
+  }, []);
+
+  const fetchVoices = async () => {
+    try {
+      const response = await fetch('http://localhost:5001/voices');
+      const voices = await response.json();
+      setAvailableVoices(voices);
+      // Set default voice
+      if (voices.length > 0) {
+        setSelectedVoice(voices[0].id);
+      }
+    } catch (err) {
+      setError('Không thể tải danh sách giọng đọc');
+    }
+  };
 
   // Handle text file upload
   const handleFileUpload = async (e) => {
@@ -43,7 +55,7 @@ const TextToSpeechPage = () => {
     }
   };
 
-  // Preview current text section
+  // Text preview component
   const TextPreview = () => {
     if (!text) return null;
 
@@ -81,18 +93,16 @@ const TextToSpeechPage = () => {
       const response = await convertTextToVoice({
         text,
         voice: selectedVoice,
-        language: 'vi',
         speed,
-        pitch,
-        volume: 1.0
+        language: selectedVoice.split('/')[1], // Extract language from model name
       });
       
-      setAudioUrl(response.data.audioUrl);
+      setAudioUrl(response.data.audio_url);
       setError(null);
 
       // Auto play preview
       if (audioRef.current) {
-        audioRef.current.src = response.data.audioUrl;
+        audioRef.current.src = response.data.audio_url;
         audioRef.current.play();
         setPreviewPlaying(true);
       }
@@ -111,7 +121,7 @@ const TextToSpeechPage = () => {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = 'audio.mp3';
+      link.download = 'audio.wav'; // Changed to .wav since Coqui outputs WAV
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -128,10 +138,10 @@ const TextToSpeechPage = () => {
           {/* Voice Selection */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Chọn Giọng Đọc
+              Chọn Model Giọng Đọc
             </label>
             <div className="grid grid-cols-2 gap-4">
-              {voices.map((voice) => (
+              {availableVoices.map((voice) => (
                 <button
                   key={voice.id}
                   onClick={() => setSelectedVoice(voice.id)}
@@ -144,7 +154,6 @@ const TextToSpeechPage = () => {
                   `}
                 >
                   <div className="flex items-center">
-                    {voice.gender === 'female' ? '👩' : '👨'} 
                     <span className="ml-2">{voice.name}</span>
                   </div>
                 </button>
@@ -152,38 +161,21 @@ const TextToSpeechPage = () => {
             </div>
           </div>
 
-          {/* Speed & Pitch Controls */}
-          <div className="mb-6 grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Tốc độ đọc
-              </label>
-              <input
-                type="range"
-                min="0.5"
-                max="2"
-                step="0.1"
-                value={speed}
-                onChange={(e) => setSpeed(parseFloat(e.target.value))}
-                className="w-full"
-              />
-              <div className="text-sm text-gray-500 mt-1">{speed}x</div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Độ cao giọng
-              </label>
-              <input
-                type="range"
-                min="0.5"
-                max="2"
-                step="0.1"
-                value={pitch}
-                onChange={(e) => setPitch(parseFloat(e.target.value))}
-                className="w-full"
-              />
-              <div className="text-sm text-gray-500 mt-1">{pitch}x</div>
-            </div>
+          {/* Speed Control */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Tốc độ đọc
+            </label>
+            <input
+              type="range"
+              min="0.5"
+              max="2.0"
+              step="0.1"
+              value={speed}
+              onChange={(e) => setSpeed(parseFloat(e.target.value))}
+              className="w-full"
+            />
+            <div className="text-sm text-gray-500 mt-1">{speed}x</div>
           </div>
 
           {/* Text Input */}
@@ -196,10 +188,9 @@ const TextToSpeechPage = () => {
               onChange={(e) => setText(e.target.value)}
               className="w-full h-40 p-3 border rounded-lg resize-none focus:ring-blue-500 focus:border-blue-500"
               placeholder="Nhập văn bản cần chuyển đổi..."
-              maxLength={10000}
             />
             <div className="mt-2 flex justify-between text-sm text-gray-500">
-              <span>{text.length}/10,000 ký tự</span>
+              <span>{text.length} ký tự</span>
               <button 
                 onClick={() => setText('')}
                 className="text-gray-600 hover:text-gray-900"
@@ -276,7 +267,7 @@ const TextToSpeechPage = () => {
                 className="flex items-center text-blue-600 hover:text-blue-800"
               >
                 <Download className="w-4 h-4 mr-2" />
-                Tải xuống MP3
+                Tải xuống Audio
               </button>
             </div>
           )}

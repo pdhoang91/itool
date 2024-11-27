@@ -7,7 +7,6 @@ import (
 
 	"management-api/internal/config"
 	"management-api/internal/handler"
-	"management-api/internal/repository"
 	"management-api/internal/router"
 	"management-api/internal/service"
 
@@ -21,16 +20,9 @@ func main() {
 		log.Fatalf("Could not load config: %v", err)
 	}
 
-	// Initialize repository
-	repo, err := repository.NewTaskRepository(cfg.Database)
-	if err != nil {
-		log.Fatalf("Could not connect to database: %v", err)
-	}
-	defer repo.Close()
-
 	// Initialize service with both HTTP client and repository
 	client := resty.New()
-	taskService := service.NewTaskService(client, repo)
+	taskService := service.NewTaskService(client)
 
 	// Initialize handler
 	taskHandler := handler.NewTaskHandler(taskService)

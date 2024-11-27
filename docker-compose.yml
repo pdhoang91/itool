@@ -13,6 +13,8 @@ services:
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
       - "5433:5432"
+    networks:
+      - app-network
   
   management-api:
     build: ./services/management-api
@@ -29,6 +31,8 @@ services:
       - "81:81"
     depends_on:
       - db
+    networks:
+      - app-network
       #- text-to-voice
       #- voice-to-text
       #- background-removal
@@ -52,7 +56,8 @@ services:
       - "82:82"
     depends_on:
       - db
-
+    networks:
+      - app-network
   # frontend:
   #   build: ./frontend
   #   container_name: frontend
@@ -74,7 +79,16 @@ services:
       - "5001:5001"
     depends_on:
       - db
-
+    networks:
+      - app-network
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
+    tmpfs:
+      - /tmp:exec,size=2G
   # voice-to-text:
   #   build: ./services/voice-to-text
   #   container_name: voice_to_text_service
@@ -104,7 +118,8 @@ services:
       - db
     volumes:
       - shared_images:/shared/images # Mount volume chung vào container
-
+    networks:
+      - app-network
 #  speech-recognition:
 #    build: ./services/speech-recognition
 #    container_name: speech_recognition_service
@@ -146,6 +161,8 @@ services:
       - "5006:5006"
     depends_on:
       - db
+    networks:
+      - app-network
 
   # translation:
   #   build: ./services/translation
@@ -164,3 +181,7 @@ services:
 volumes:
   db_data:
   shared_images:
+
+networks:
+  app-network:
+    driver: bridge
