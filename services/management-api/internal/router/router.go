@@ -24,6 +24,7 @@ func SetupRouter(taskHandler handler.TaskHandler, cfg *config.Config) *gin.Engin
 
 	r.Static("/uploads", "/shared/images")
 	r.Static("/images", "/shared/images")
+	r.Static("/mp3", "/shared/mp3")
 	//r.Static("/shared", "/shared/images")
 
 	// Các endpoint tương ứng với từng service

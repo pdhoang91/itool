@@ -14,11 +14,32 @@ const TextToSpeechPage = () => {
   const [previewPlaying, setPreviewPlaying] = useState(false);
   const audioRef = useRef(null);
   const fileInputRef = useRef(null);
+  const [pitch, setPitch] = useState(0.0);
+  const [volume, setVolume] = useState(1.0);
+  const [languages, setLanguages] = useState([]);
+  const [selectedLanguage, setSelectedLanguage] = useState('en');
 
   // Fetch available voices on component mount
   useEffect(() => {
     fetchVoices();
   }, []);
+
+  // Thêm useEffect fetch languages
+  useEffect(() => {
+    fetchLanguages();
+  }, []);
+
+  const fetchLanguages = async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/tts/languages`);
+      setLanguages(response.data.languages);
+      if (response.data.languages.length > 0) {
+        setSelectedLanguage(response.data.languages[0]);
+      }
+    } catch (err) {
+      setError('Không thể tải danh sách ngôn ngữ');
+    }
+  };
 
   const fetchVoices = async () => {
     try {
@@ -82,25 +103,56 @@ const TextToSpeechPage = () => {
   };
 
   // Handle conversion
+  // const handleConvert = async () => {
+  //   if (!text.trim()) {
+  //     setError('Vui lòng nhập văn bản cần chuyển đổi.');
+  //     return;
+  //   }
+
+  //   setLoading(true);
+  //   try {
+  //     const response = await convertTextToVoice({
+  //       text,
+  //       voice: selectedVoice,
+  //       speed,
+  //       language: selectedVoice.split('/')[1], // Extract language from model name
+  //     });
+      
+  //     setAudioUrl(response.data.audio_url);
+  //     setError(null);
+
+  //     // Auto play preview
+  //     if (audioRef.current) {
+  //       audioRef.current.src = response.data.audio_url;
+  //       audioRef.current.play();
+  //       setPreviewPlaying(true);
+  //     }
+  //   } catch (err) {
+  //     setError('Có lỗi xảy ra khi chuyển đổi: ' + (err.response?.data?.message || err.message));
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
   const handleConvert = async () => {
     if (!text.trim()) {
       setError('Vui lòng nhập văn bản cần chuyển đổi.');
       return;
     }
-
+  
     setLoading(true);
     try {
       const response = await convertTextToVoice({
         text,
+        language: selectedLanguage,
         voice: selectedVoice,
         speed,
-        language: selectedVoice.split('/')[1], // Extract language from model name
+        pitch,
+        volume
       });
       
       setAudioUrl(response.data.audio_url);
       setError(null);
-
-      // Auto play preview
+  
       if (audioRef.current) {
         audioRef.current.src = response.data.audio_url;
         audioRef.current.play();
@@ -159,6 +211,40 @@ const TextToSpeechPage = () => {
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Pitch Control */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Độ cao giọng đọc
+            </label>
+            <input
+              type="range"
+              min="-20.0"
+              max="20.0"
+              step="1.0" 
+              value={pitch}
+              onChange={(e) => setPitch(parseFloat(e.target.value))}
+              className="w-full"
+            />
+            <div className="text-sm text-gray-500 mt-1">{pitch}</div>
+          </div>
+
+          {/* Volume Control */}  
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Âm lượng
+            </label>
+            <input
+              type="range"
+              min="0.0"
+              max="2.0"
+              step="0.1"
+              value={volume}
+              onChange={(e) => setVolume(parseFloat(e.target.value))} 
+              className="w-full"
+            />
+            <div className="text-sm text-gray-500 mt-1">{volume}x</div>
           </div>
 
           {/* Speed Control */}

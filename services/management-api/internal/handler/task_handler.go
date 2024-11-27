@@ -10,18 +10,25 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// TaskHandler định nghĩa handler cho các endpoint liên quan đến tác vụ
 type TaskHandler struct {
 	service service.TaskService
 }
 
+// NewTaskHandler tạo một instance mới của TaskHandler với TaskService đã cung cấp
 func NewTaskHandler(service service.TaskService) *TaskHandler {
 	return &TaskHandler{service: service}
 }
 
+// GetAvailableLanguages xử lý endpoint GET /languages
 func (h *TaskHandler) GetAvailableLanguages(c *gin.Context) {
 	log.Println("GetAvailableLanguages: Received request")
 
-	languages, err := h.service.GetAvailableLanguages()
+	// Lấy context từ request
+	ctx := c.Request.Context()
+
+	// Gọi service với context
+	languages, err := h.service.GetAvailableLanguages(ctx)
 	if err != nil {
 		log.Printf("GetAvailableLanguages: Error fetching languages - %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch languages"})
@@ -29,14 +36,22 @@ func (h *TaskHandler) GetAvailableLanguages(c *gin.Context) {
 	}
 
 	log.Printf("GetAvailableLanguages: Successfully retrieved %d languages", len(languages))
-	c.JSON(http.StatusOK, languages)
+	c.JSON(http.StatusOK, gin.H{
+		"languages":       languages,
+		"total_languages": len(languages),
+	})
 }
 
+// GetAvailableVoices xử lý endpoint GET /voices/:language
 func (h *TaskHandler) GetAvailableVoices(c *gin.Context) {
 	language := c.Param("language")
 	log.Printf("GetAvailableVoices: Received request for language: %s", language)
 
-	voices, err := h.service.GetAvailableVoices(language)
+	// Lấy context từ request
+	ctx := c.Request.Context()
+
+	// Gọi service với context
+	voices, err := h.service.GetAvailableVoices(ctx, language)
 	if err != nil {
 		log.Printf("GetAvailableVoices: Error fetching voices - %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch voices"})
@@ -44,16 +59,19 @@ func (h *TaskHandler) GetAvailableVoices(c *gin.Context) {
 	}
 
 	log.Printf("GetAvailableVoices: Successfully retrieved %d voices for language %s", len(voices), language)
-	c.JSON(http.StatusOK, voices)
+	c.JSON(http.StatusOK, gin.H{
+		"voices": voices,
+	})
 }
 
+// HandleTextToVoice xử lý endpoint POST /tts
 func (h *TaskHandler) HandleTextToVoice(c *gin.Context) {
 	log.Println("HandleTextToVoice: Received request")
 
 	var req struct {
 		Text     string  `json:"text" binding:"required"`
 		Language string  `json:"language"`
-		Voice    string  `json:"voice"`
+		Model    string  `json:"model"`
 		Speed    float64 `json:"speed"`
 		Pitch    float64 `json:"pitch"`
 		Volume   float64 `json:"volume"`
@@ -65,7 +83,7 @@ func (h *TaskHandler) HandleTextToVoice(c *gin.Context) {
 		return
 	}
 
-	// Set default values
+	// Đặt giá trị mặc định nếu cần thiết
 	if req.Language == "" {
 		req.Language = "en"
 	}
@@ -78,14 +96,22 @@ func (h *TaskHandler) HandleTextToVoice(c *gin.Context) {
 	if req.Volume == 0 {
 		req.Volume = 1.0
 	}
+	if req.Model == "" {
+		req.Model = "tts_models/en/ljspeech/tacotron2-DDC"
+	}
 
-	log.Printf("HandleTextToVoice: Processing request - Text: %s, Language: %s, Voice: %s",
-		req.Text, req.Language, req.Voice)
+	log.Printf("HandleTextToVoice: Processing request - Text: %s, Language: %s, Model: %s",
+		req.Text, req.Language, req.Model)
 
+	// Lấy context từ request
+	ctx := c.Request.Context()
+
+	// Gọi service với context
 	resp, err := h.service.HandleTextToVoice(
+		ctx,
 		req.Text,
 		req.Language,
-		req.Voice,
+		req.Model,
 		req.Speed,
 		req.Pitch,
 		req.Volume,
@@ -100,27 +126,34 @@ func (h *TaskHandler) HandleTextToVoice(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
-// HandleVoiceToText xử lý endpoint /vts
+// HandleVoiceToText xử lý endpoint POST /vts
 func (h *TaskHandler) HandleVoiceToText(c *gin.Context) {
 	var req struct {
 		AudioURL string `json:"audio_url" binding:"required"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Printf("HandleVoiceToText: Invalid input - %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
 		return
 	}
 
-	resp, err := h.service.HandleVoiceToText(req.AudioURL)
+	// Lấy context từ request
+	ctx := c.Request.Context()
+
+	// Gọi service với context
+	resp, err := h.service.HandleVoiceToText(ctx, req.AudioURL)
 	if err != nil {
+		log.Printf("HandleVoiceToText: Service error - %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
+	log.Printf("HandleVoiceToText: Success - Response: %v", resp)
 	c.JSON(http.StatusOK, resp)
 }
 
-// HandleBackgroundRemoval xử lý endpoint /remove-bg
+// HandleBackgroundRemoval xử lý endpoint POST /remove-bg
 func (h *TaskHandler) HandleBackgroundRemoval(c *gin.Context) {
 	log.Println("HandleBackgroundRemoval: Received request to remove background")
 
@@ -143,8 +176,11 @@ func (h *TaskHandler) HandleBackgroundRemoval(c *gin.Context) {
 	}
 	log.Printf("HandleBackgroundRemoval: File saved to temporary path '%s'", filePath)
 
-	// Gọi service xử lý background removal
-	processedImagePath, err := h.service.HandleBackgroundRemoval(filePath)
+	// Lấy context từ request
+	ctx := c.Request.Context()
+
+	// Gọi service xử lý background removal với context
+	processedImagePath, err := h.service.HandleBackgroundRemoval(ctx, filePath)
 	if err != nil {
 		log.Printf("HandleBackgroundRemoval: Failed to process background removal for file '%s'. Error: %v", filePath, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -157,30 +193,38 @@ func (h *TaskHandler) HandleBackgroundRemoval(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"processed_image_path": processedImagePath})
 }
 
-// HandleSpeechRecognition xử lý endpoint /speech-recognition
+// HandleSpeechRecognition xử lý endpoint POST /speech-recognition
 func (h *TaskHandler) HandleSpeechRecognition(c *gin.Context) {
 	var req struct {
 		AudioURL string `json:"audio_url" binding:"required"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Printf("HandleSpeechRecognition: Invalid input - %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
 		return
 	}
 
-	resp, err := h.service.HandleSpeechRecognition(req.AudioURL)
+	// Lấy context từ request
+	ctx := c.Request.Context()
+
+	// Gọi service với context
+	resp, err := h.service.HandleSpeechRecognition(ctx, req.AudioURL)
 	if err != nil {
+		log.Printf("HandleSpeechRecognition: Service error - %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
+	log.Printf("HandleSpeechRecognition: Success - Response: %v", resp)
 	c.JSON(http.StatusOK, resp)
 }
 
-// HandleFaceRecognition xử lý endpoint /face-recognition
+// HandleFaceRecognition xử lý endpoint POST /face-recognition
 func (h *TaskHandler) HandleFaceRecognition(c *gin.Context) {
 	file, header, err := c.Request.FormFile("image")
 	if err != nil {
+		log.Printf("HandleFaceRecognition: No image file provided. Error: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "No image file provided"})
 		return
 	}
@@ -189,23 +233,33 @@ func (h *TaskHandler) HandleFaceRecognition(c *gin.Context) {
 	uploadPath := "./uploads/images/"
 	filePath, err := utils.SaveUploadedFile(file, header, uploadPath)
 	if err != nil {
+		log.Printf("HandleFaceRecognition: Failed to save file '%s'. Error: %v", header.Filename, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to save the file"})
 		return
 	}
+	log.Printf("HandleFaceRecognition: File saved to temporary path '%s'", filePath)
 
-	resp, err := h.service.HandleFaceRecognition(filePath)
+	// Lấy context từ request
+	ctx := c.Request.Context()
+
+	// Gọi service xử lý face recognition với context
+	resp, err := h.service.HandleFaceRecognition(ctx, filePath)
 	if err != nil {
+		log.Printf("HandleFaceRecognition: Failed to process face recognition for file '%s'. Error: %v", filePath, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
+	log.Printf("HandleFaceRecognition: Successfully processed face recognition for file '%s'", filePath)
+
 	c.JSON(http.StatusOK, resp)
 }
 
-// HandleOCR xử lý endpoint /ocr
+// HandleOCR xử lý endpoint POST /ocr
 func (h *TaskHandler) HandleOCR(c *gin.Context) {
 	file, header, err := c.Request.FormFile("image")
 	if err != nil {
+		log.Printf("HandleOCR: No image file provided. Error: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "No image file provided"})
 		return
 	}
@@ -214,20 +268,28 @@ func (h *TaskHandler) HandleOCR(c *gin.Context) {
 	uploadPath := "./uploads/images/"
 	filePath, err := utils.SaveUploadedFile(file, header, uploadPath)
 	if err != nil {
+		log.Printf("HandleOCR: Failed to save file '%s'. Error: %v", header.Filename, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to save the file"})
 		return
 	}
+	log.Printf("HandleOCR: File saved to temporary path '%s'", filePath)
 
-	resp, err := h.service.HandleOCR(filePath)
+	// Lấy context từ request
+	ctx := c.Request.Context()
+
+	// Gọi service xử lý OCR với context
+	resp, err := h.service.HandleOCR(ctx, filePath)
 	if err != nil {
+		log.Printf("HandleOCR: Failed to process OCR for file '%s'. Error: %v", filePath, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
+	log.Printf("HandleOCR: Successfully processed OCR for file '%s'", filePath)
 	c.JSON(http.StatusOK, resp)
 }
 
-// HandleTranslation xử lý endpoint /translate
+// HandleTranslation xử lý endpoint POST /translate
 func (h *TaskHandler) HandleTranslation(c *gin.Context) {
 	var req struct {
 		Text     string `json:"text" binding:"required"`
@@ -235,23 +297,33 @@ func (h *TaskHandler) HandleTranslation(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Printf("HandleTranslation: Invalid input - %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
 		return
 	}
 
-	resp, err := h.service.HandleTranslation(req.Text, req.DestLang)
+	log.Printf("HandleTranslation: Processing translation - Text: %s, DestLang: %s", req.Text, req.DestLang)
+
+	// Lấy context từ request
+	ctx := c.Request.Context()
+
+	// Gọi service với context
+	resp, err := h.service.HandleTranslation(ctx, req.Text, req.DestLang)
 	if err != nil {
+		log.Printf("HandleTranslation: Service error - %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
+	log.Printf("HandleTranslation: Success - Response: %v", resp)
 	c.JSON(http.StatusOK, resp)
 }
 
-// UploadAudio xử lý endpoint /upload-audio
+// UploadAudio xử lý endpoint POST /upload-audio
 func (h *TaskHandler) UploadAudio(c *gin.Context) {
 	file, header, err := c.Request.FormFile("audio")
 	if err != nil {
+		log.Printf("UploadAudio: No audio file provided. Error: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "No audio file provided"})
 		return
 	}
@@ -260,18 +332,23 @@ func (h *TaskHandler) UploadAudio(c *gin.Context) {
 	uploadPath := "./uploads/audio/"
 	filePath, err := utils.SaveUploadedFile(file, header, uploadPath)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to save the file"})
+		log.Printf("UploadAudio: Failed to save audio file '%s'. Error: %v", header.Filename, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to save the audio file"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"audio_url": filePath})
+	log.Printf("UploadAudio: Audio file saved to '%s'", filePath)
 
-	// Có thể triển khai upload lên S3 hoặc dịch vụ lưu trữ khác tại đây
-	// Ví dụ trả về đường dẫn tạm thời
-	//audioURL, err := h.service.UploadAudio(header.Filename)
-	//if err != nil {
-	//	c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to upload audio"})
-	//	return
-	//}
+	// Lấy context từ request
+	ctx := c.Request.Context()
 
-	//c.JSON(http.StatusOK, gin.H{"audio_url": audioURL})
+	// Gọi service để tải lên (nếu cần, ví dụ như lên S3)
+	audioURL, err := h.service.UploadAudio(ctx, header.Filename)
+	if err != nil {
+		log.Printf("UploadAudio: Failed to upload audio file '%s'. Error: %v", header.Filename, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to upload audio"})
+		return
+	}
+
+	log.Printf("UploadAudio: Successfully uploaded audio. URL: %s", audioURL)
+	c.JSON(http.StatusOK, gin.H{"audio_url": audioURL})
 }
