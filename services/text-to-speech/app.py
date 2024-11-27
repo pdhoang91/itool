@@ -1,4 +1,4 @@
-from flask import Flask, request, send_file, jsonify
+from flask import Flask, request, jsonify
 import numpy as np
 import torch
 from TTS.utils.synthesizer import Synthesizer
@@ -7,8 +7,14 @@ from TTS.api import TTS
 import io
 import soundfile as sf
 import librosa
+import os
+from datetime import datetime
 
 app = Flask(__name__)
+
+# Add constants for file storage
+AUDIO_DIR = "/shared/images"
+os.makedirs(AUDIO_DIR, exist_ok=True)
 
 # Initialize model and synthesizer
 model_manager = ModelManager()
@@ -38,10 +44,8 @@ except Exception as e:
 @app.route('/models', methods=['GET'])
 def get_models():
     try:
-        # Lấy danh sách tất cả các models có sẵn
         available_models = TTS().list_models()
         
-        # Tổ chức models theo ngôn ngữ
         models_by_language = {}
         for model in available_models:
             parts = model.split('/')
@@ -87,18 +91,11 @@ def get_languages():
     except Exception as e:
         return {'error': str(e)}, 500
 
-
 def adjust_speed_pitch(audio, speed=1.0, pitch=1.0):
-    """
-    Adjust speed and pitch of audio using librosa
-    """
-    # Time stretch for speed adjustment
     if speed != 1.0:
         audio = librosa.effects.time_stretch(audio, rate=1/speed)
     
-    # Pitch shift (in semitones)
     if pitch != 1.0:
-        # Convert pitch multiplier to semitones
         n_steps = 12 * np.log2(pitch)
         audio = librosa.effects.pitch_shift(
             y=audio,
@@ -118,7 +115,6 @@ def text_to_speech():
         pitch = float(data.get('pitch', 1.0))
         selected_model = data.get('model', model_name)
         
-        # Check and load new model if needed
         if selected_model != model_name:
             try:
                 new_model_path, new_config_path, _ = model_manager.download_model(selected_model)
@@ -131,23 +127,20 @@ def text_to_speech():
             except Exception as e:
                 return {'error': f'Model not found: {str(e)}'}, 404
         
-        # Generate speech without speed/pitch modifications
         wav = synthesizer.tts(text)
-        
-        # Apply speed and pitch adjustments
         wav = adjust_speed_pitch(wav, speed, pitch)
         
-        # Convert to bytes
-        wav_bytes = io.BytesIO()
-        sf.write(wav_bytes, wav, synthesizer.output_sample_rate, format='WAV')
-        wav_bytes.seek(0)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"tts_{timestamp}.wav"
+        filepath = os.path.join(AUDIO_DIR, filename)
         
-        return send_file(
-            wav_bytes,
-            mimetype='audio/wav',
-            as_attachment=True,
-            download_name='output.wav'
-        )
+        sf.write(filepath, wav, synthesizer.output_sample_rate)
+        
+        return jsonify({
+            'success': True,
+            'file_path': filepath,
+            'filename': filename
+        })
         
     except Exception as e:
         return {'error': str(e)}, 500
